@@ -17,14 +17,9 @@ public class WebSocketInterceptor implements HandshakeInterceptor {
 			@NonNull Map<String, Object> attributes) {
 		if (request instanceof ServletServerHttpRequest servletRequest) {
 			String uuid = servletRequest.getServletRequest().getParameter("uuid");
-			String connectDefault = servletRequest.getServletRequest().getParameter("connectDefault");
 
 			if (uuid != null)
 				attributes.put("uuid", uuid);
-			else
-				return false;
-			if (connectDefault != null)
-				attributes.put("connectDefault", connectDefault);
 			else
 				return false;
 		}

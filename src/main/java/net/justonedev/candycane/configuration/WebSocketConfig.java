@@ -2,6 +2,7 @@
 package net.justonedev.candycane.configuration;
 
 import net.justonedev.candycane.websockets.SocketSessionHandler;
+import net.justonedev.candycane.websockets.SocketSessionHandlerOld;
 import net.justonedev.candycane.websockets.WebSocketInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -22,33 +23,34 @@ import java.util.concurrent.ConcurrentHashMap;
 @Configuration
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
-	@Value("dashboard.variable.frontend-url")
-	private String frontendUrl;
-
 	private final Map<String, Set<WebSocketSession>> userSockets = new ConcurrentHashMap<>();
 
 	/**
 	 * Creates a handler to manage WebSocket sessions.
 	 *
-	 * @return the {@link SocketSessionHandler} instance
+	 * @return the {@link SocketSessionHandlerOld} instance
 	 */
 	@Bean
-	public SocketSessionHandler socketSessionHandler() {
-		return new SocketSessionHandler(userSockets);
+	public SocketSessionHandlerOld socketSessionHandlerOld() {
+		return new SocketSessionHandlerOld(userSockets);
 	}
 
 	/**
-	 * Registers WebSocket handlers and defines allowed origins:
-	 * <ul>
-	 * <li><a href="http://localhost:3000">...</a></li>
-	 * <li><a href="http://localhost>...</a></li>
-	 * <li><a href="https://localhost:3000">...</a></li>
-	 * </ul>
+	 * Creates a handler to manage WebSocket sessions.
 	 *
+	 * @return the {@link SocketSessionHandlerOld} instance
+	 */
+	@Bean
+	public SocketSessionHandler socketSessionHandler() {
+		return new SocketSessionHandler();
+	}
+
+	/**
+	 * Registers WebSocket handlers
 	 * @param registry the {@link WebSocketHandlerRegistry} to configure
 	 */
 	@Override
 	public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-		registry.addHandler(socketSessionHandler(), "/ws").addInterceptors(new WebSocketInterceptor()).setAllowedOrigins(frontendUrl);
+		registry.addHandler(socketSessionHandler(), "/ws").addInterceptors(new WebSocketInterceptor()).setAllowedOrigins("*");
 	}
 }
