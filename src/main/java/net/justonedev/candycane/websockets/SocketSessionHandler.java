@@ -1,12 +1,15 @@
 /* (C)2025 */
-package net.justonedev.lwdiebbackend.websockets;
+package net.justonedev.candycane.websockets;
 
 import lombok.extern.slf4j.Slf4j;
+import net.justonedev.candycane.lobbysession.LobbyManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -28,6 +31,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @EnableScheduling
 public class SocketSessionHandler extends TextWebSocketHandler {
+	@Autowired
+	private LobbyManager lobbyManager;
+
 	private static final Logger logger = LoggerFactory.getLogger(SocketSessionHandler.class);
 
 	private static final String DEFAULT_UUID = "00000000-0000-0000-0000-000000000000";

@@ -1,5 +1,5 @@
 /* (C)2025 */
-package net.justonedev.lwdiebbackend.configuration;
+package net.justonedev.candycane.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

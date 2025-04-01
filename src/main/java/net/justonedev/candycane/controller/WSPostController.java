@@ -1,8 +1,8 @@
 /* (C)2025 */
-package net.justonedev.lwdiebbackend.controller;
+package net.justonedev.candycane.controller;
 
-import net.justonedev.lwdiebbackend.Signature;
-import net.justonedev.lwdiebbackend.websockets.SocketSessionHandler;
+import net.justonedev.candycane.Signature;
+import net.justonedev.candycane.websockets.SocketSessionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

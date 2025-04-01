@@ -1,5 +1,5 @@
 /* (C)2025 */
-package net.justonedev.lwdiebbackend;
+package net.justonedev.candycane;
 
 public final class Signature {
 	private final String SIGNATURE_SECRET;

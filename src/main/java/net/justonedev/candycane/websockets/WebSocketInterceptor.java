@@ -1,5 +1,5 @@
 /* (C)2025 */
-package net.justonedev.lwdiebbackend.websockets;
+package net.justonedev.candycane.websockets;
 
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
