@@ -29,6 +29,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
 	/**
 	 * Registers WebSocket handlers
+	 * 
 	 * @param registry the {@link WebSocketHandlerRegistry} to configure
 	 */
 	@Override
