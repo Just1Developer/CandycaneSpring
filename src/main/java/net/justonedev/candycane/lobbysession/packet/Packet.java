@@ -33,8 +33,9 @@ public class Packet {
                 String.join(", ",
                         attributes.entrySet().stream()
                                 .map(
-                                        entry -> "\"%s\":\"%s\""
-                                                .formatted(entry.getKey(), entry.getValue())
+                                        entry -> "\"%s\":%s"
+                                                .formatted(entry.getKey(), entry.getValue().matches("-?\\d+(?:\\.\\d+)?")
+                                                        ? entry.getValue() : "\"%s\"".formatted(entry.getValue()))
                                 )
                                 .toList()
                 )
@@ -44,11 +45,11 @@ public class Packet {
     public static Packet parseFromJSON(String json) throws PacketParseException {
         try {
             Packet packet = new Packet();
-            String[] pairs = json.replaceAll("[{}\"]", "").split(", ");
+            String[] pairs = json.replaceAll("[{}\"]", "").split(",");
             for (String pair : pairs) {
                 String[] keyValue = pair.split(":");
                 if (keyValue.length == 2) {
-                    packet.addAttribute(keyValue[0], keyValue[1]);
+                    packet.addAttribute(keyValue[0].trim(), keyValue[1].trim());
                 }
             }
             return packet;

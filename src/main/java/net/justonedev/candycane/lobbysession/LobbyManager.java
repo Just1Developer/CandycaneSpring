@@ -48,7 +48,7 @@ public class LobbyManager {
 
     public void removePlayerFromLobby(WebSocketSession session) {
         String uuid = session.getAttributes().getOrDefault("uuid", "-").toString();
-        Lobby lobby = perUUIDLobbies.get(uuid);;
+        Lobby lobby = perUUIDLobbies.get(uuid);
         if (uuid == null) {
             Optional<Lobby> optionalLobby = perUUIDLobbies.values().stream().filter(
                     l -> l.containsPlayer(session)
@@ -56,7 +56,8 @@ public class LobbyManager {
             if (optionalLobby.isPresent()) lobby = optionalLobby.get();
             else return;
         }
-        lobby.removePlayer(session);
+        // todo lobby is null on shutdown here
+        lobby.removePlayer(session, uuid);
         perUUIDLobbies.remove(uuid);
     }
 

@@ -39,7 +39,6 @@ public class SocketSessionHandler extends TextWebSocketHandler {
         // Send self packet after connection
         Player player = lobbyManager.getOrCreatePlayer(uuid, session);
         player.sendPacket(player.getSelfPacket());
-        lobbyManager.relayPacketReceived(uuid, PacketFormatter.updatePlayerPacket(uuid, player.getName(), player.getColor()));
         log.info("Player {} connected (Name: {}, Color: {})", uuid, player.getName(), player.getColor());
     }
 

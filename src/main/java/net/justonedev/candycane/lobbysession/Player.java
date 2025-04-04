@@ -21,6 +21,11 @@ public class Player {
     private final String color;
     private final WebSocketSession session;
 
+    @Setter
+    private String x;
+    @Setter
+    private String y;
+
     public Player(WebSocketSession session) {
         this(
                 session,
@@ -44,6 +49,8 @@ public class Player {
         this.uuid = uuid;
         this.name = name;
         this.color = color;
+        this.x = "0";
+        this.y = "0";
     }
 
     public void sendPacket(Packet packet) {

@@ -18,15 +18,27 @@ public class Lobby {
     }
 
     public void addPlayer(Player player) {
-        if (player != null) players.add(player);
+        if (player == null) return;
+        for (Player p : players) {
+            if (p.getUuid().equals(player.getUuid())) {
+                return; // Player already exists
+            }
+        }
+        Packet playerPacket = PacketFormatter.updatePlayerPacket(player);
+        players.forEach(p -> {
+            player.sendPacket(PacketFormatter.updatePlayerPacket(p));
+            p.sendPacket(playerPacket);
+        });
+        players.add(player);
     }
 
     public void removePlayer(Player player) {
         players.remove(player);
     }
 
-    public void removePlayer(WebSocketSession session) {
+    public void removePlayer(WebSocketSession session, String uuid) {
         players.removeIf(player -> player.getSession().equals(session));
+        players.forEach(p -> p.sendPacket(PacketFormatter.playerDisconnectPacket(uuid)));
     }
 
     public boolean containsPlayer(Player player) {
@@ -47,8 +59,18 @@ public class Lobby {
 
     public void packetReceived(String uuid, Packet packet) {
         final Packet relayPacket = PacketFormatter.getRelayPacket(packet, uuid);
+        if (packet.getAttribute("type").equals("POSITION")) {
+            getPlayer(uuid).ifPresent(player -> {
+                String x = packet.getAttribute("x");
+                if (x.isEmpty()) x = "0";
+                String y = packet.getAttribute("y");
+                if (y.isEmpty()) y = "0";
+                player.setX(x);
+                player.setY(y);
+            });
+        }
         players.parallelStream().forEach(player -> {
-            if (player.getUuid().equals(uuid)) {
+            if (!player.getUuid().equals(uuid)) {
                 player.sendPacket(relayPacket);
             }
         });
