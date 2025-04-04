@@ -1,5 +1,7 @@
 package net.justonedev.candycane.lobbysession.packet;
 
+import java.util.UUID;
+
 public final class PacketFormatter {
     public static final Packet PACKET_KEEP_ALIVE = new Packet("type", "ALIVE");
 
@@ -30,5 +32,14 @@ public final class PacketFormatter {
         p.addAttribute("name", name);
         p.addAttribute("color", color);
         return p;
+    }
+
+    public static Packet getRelayPacket(Packet receivedPacket, String senderUUID) {
+        Packet packet = new Packet(receivedPacket);
+        if (packet.getAttribute("uuid").isEmpty()) {
+            // Inject UUID into packet
+            packet.addAttribute("uuid", senderUUID);
+        }
+        return packet;
     }
 }

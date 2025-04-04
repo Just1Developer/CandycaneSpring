@@ -9,7 +9,8 @@ public final class PlayerInfoGenerator {
             "Kind-hearted", "Loyal", "Mighty", "Noble", "Optimistic",
             "Playful", "Quick-witted", "Radiant", "Sincere", "Tenacious",
             "Unique", "Valiant", "Wise", "Xenial", "Youthful",
-            "Zealous"
+            "Zealous", "Lovely", "Charming", "Witty", "Dazzling",
+            "Radiant", "Enchanting", "Magnificent", "Spectacular",
     };
     private static final String[] NOUNS = {
             "Explorer", "Guardian", "Hero", "Inventor", "Jester",
@@ -43,7 +44,8 @@ public final class PlayerInfoGenerator {
     public String generateName() {
         double nameType = random.nextDouble();
         if (nameType < 0.33) {
-            return ANIMALS[random.nextInt(ANIMALS.length)];
+            return ADJECTIVES[random.nextInt(ADJECTIVES.length)] + " " +
+                    ANIMALS[random.nextInt(ANIMALS.length)];
         } else if (nameType < 0.66) {
             return ARTISTS[random.nextInt(ARTISTS.length)];
         } else {

@@ -15,8 +15,12 @@ public class Packet {
         addAttribute(key, value);
     }
 
+    public Packet(Packet copy) {
+        this.attributes = new HashMap<>(copy.attributes);
+    }
+
     public String getAttribute(String key) {
-        return attributes.get(key);
+        return attributes.getOrDefault(key, "");
     }
 
     public void addAttribute(String key, String value) {
@@ -35,5 +39,21 @@ public class Packet {
                                 .toList()
                 )
         );
+    }
+
+    public static Packet parseFromJSON(String json) throws PacketParseException {
+        try {
+            Packet packet = new Packet();
+            String[] pairs = json.replaceAll("[{}\"]", "").split(", ");
+            for (String pair : pairs) {
+                String[] keyValue = pair.split(":");
+                if (keyValue.length == 2) {
+                    packet.addAttribute(keyValue[0], keyValue[1]);
+                }
+            }
+            return packet;
+        } catch (Exception e) {
+            throw new PacketParseException();
+        }
     }
 }

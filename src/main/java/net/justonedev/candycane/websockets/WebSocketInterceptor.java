@@ -1,6 +1,8 @@
 /* (C)2025 */
 package net.justonedev.candycane.websockets;
 
+import lombok.extern.slf4j.Slf4j;
+import net.justonedev.candycane.lobbysession.Player;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
@@ -10,6 +12,7 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import java.util.Map;
 
+@Slf4j
 public class WebSocketInterceptor implements HandshakeInterceptor {
 
 	@Override

@@ -2,7 +2,7 @@
 package net.justonedev.candycane.controller;
 
 import net.justonedev.candycane.Signature;
-import net.justonedev.candycane.websockets.SocketSessionHandlerOld;
+import net.justonedev.candycane.websockets.SocketSessionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WSPostController {
 	private static final Logger logger = LoggerFactory.getLogger(WSPostController.class);
 	@Autowired
-	private SocketSessionHandlerOld socketSessionHandler;
+	private SocketSessionHandler socketSessionHandler;
 	private Signature signature;
 
 	private static final int REQUEST_VALID_TIME = 120000; // 2 minutes
@@ -85,15 +85,6 @@ public class WSPostController {
 
 		uuidRequestExpirationTime.put(requestUUID, System.currentTimeMillis() + REQUEST_VALID_TIME);
 
-		logger.info("Sending ws command {} to user {}", command, userId);
-		switch (command) {
-		case "light":
-		case "dark":
-			socketSessionHandler.sendThemeSelected(userId, command);
-			break;
-		default:
-			socketSessionHandler.sendCommand(userId, command);
-		}
 		return ResponseEntity.ok().build();
 	}
 

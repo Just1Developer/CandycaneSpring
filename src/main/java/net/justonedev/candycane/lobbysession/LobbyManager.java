@@ -1,12 +1,11 @@
 package net.justonedev.candycane.lobbysession;
 
+import net.justonedev.candycane.lobbysession.packet.Packet;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -42,6 +41,7 @@ public class LobbyManager {
     }
 
     public void addNewPlayerToLobby(Lobby lobby, Player player) {
+        player.setLobbyManager(this);
         lobby.addPlayer(player);
         perUUIDLobbies.put(player.getUuid(), lobby);
     }
@@ -60,8 +60,51 @@ public class LobbyManager {
         perUUIDLobbies.remove(uuid);
     }
 
+    /**
+     * Gets or creates a new player. If the given UUID is associated with
+     * a player, the player is returned (regardless of lobby).
+     * If the UUID is not registered, it will create a new player,
+     * add it to the first lobby and return it.
+     * If no lobby exists yet, one will be created as well.
+     *
+     * @param uuid The UUID of the player.
+     * @param session The session of the player that will be associated if the player does not exist.
+     * @return The player associated with the given UUID.
+     */
+    public Player getOrCreatePlayer(String uuid, WebSocketSession session) {
+        return getOrCreatePlayer(uuid, session, getFirstOrCreate());
+    }
+
+    /**
+     * Gets or creates a new player. If the given UUID is associated with
+     * a player, the player is returned (regardless of lobby).
+     * If the UUID is not registered, it will create a new player,
+     * add it to the given lobby and return it.
+     *
+     * @param uuid The UUID of the player.
+     * @param session The session of the player that will be associated if the player does not exist.
+     * @param lobby The lobby to add the player to if it is not already registered.
+     * @return The player associated with the given UUID.
+     */
+    public Player getOrCreatePlayer(String uuid, WebSocketSession session, Lobby lobby) {
+        if (perUUIDLobbies.containsKey(uuid)) {
+            Optional<Player> player = perUUIDLobbies.get(uuid).getPlayer(uuid);
+            if (player.isPresent()) return player.get();
+        }
+        Player newPlayer = new Player(session, uuid);
+        addNewPlayerToLobby(lobby, newPlayer);
+        return newPlayer;
+    }
+
     @Scheduled(fixedRate = 29000)
     public void keepAlive() {
         lobbies.parallelStream().forEach(Lobby::keepAlive);
+    }
+
+    public void relayPacketReceived(String uuid, Packet packet) {
+        Lobby lobby = perUUIDLobbies.get(uuid);
+        if (lobby != null) {
+            lobby.packetReceived(uuid, packet);
+        }
     }
 }
