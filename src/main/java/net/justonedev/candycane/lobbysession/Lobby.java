@@ -4,9 +4,14 @@ package net.justonedev.candycane.lobbysession;
 import net.justonedev.candycane.lobbysession.packet.Packet;
 import net.justonedev.candycane.lobbysession.packet.PacketFormatter;
 import net.justonedev.candycane.lobbysession.world.PersistentWorldState;
+import org.springframework.cglib.core.Block;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Lobby {
@@ -31,6 +36,15 @@ public class Lobby {
 			player.sendPacket(PacketFormatter.updatePlayerPacket(p));
 			p.sendPacket(playerPacket);
 		});
+
+		// todo properly
+		primitiveWorldState.forEach((key, value) -> {
+			value.forEach(val -> {
+				Packet packet = PacketFormatter.buildPacket(key, "BLOCK", val[0], val[1]);
+				player.sendPacket(packet);
+			});
+		});
+
 		players.add(player);
 	}
 
@@ -39,8 +53,10 @@ public class Lobby {
 	}
 
 	public void removePlayer(WebSocketSession session, String uuid) {
+		Packet packet = PacketFormatter.playerDisconnectPacket(uuid);
 		players.removeIf(player -> player.getSession().equals(session));
-		players.forEach(p -> p.sendPacket(PacketFormatter.playerDisconnectPacket(uuid)));
+		players.forEach(p -> p.sendPacket(packet));
+		processPacket(uuid, packet);
 	}
 
 	public boolean containsPlayer(Player player) {
@@ -59,9 +75,11 @@ public class Lobby {
 		players.parallelStream().forEach(player -> player.sendPacket(PacketFormatter.PACKET_KEEP_ALIVE));
 	}
 
-	public void packetReceived(String uuid, Packet packet) {
-		final Packet relayPacket = PacketFormatter.getRelayPacket(packet, uuid);
-		if (packet.getAttribute("type").equals("POSITION")) {
+	private final ConcurrentHashMap<String, List<String[]>> primitiveWorldState = new ConcurrentHashMap<>();
+
+	private void processPacket(String uuid, Packet packet) {
+		switch (packet.getAttribute("type")) {
+		case "POSITION":
 			getPlayer(uuid).ifPresent(player -> {
 				String x = packet.getAttribute("x");
 				if (x.isEmpty())
@@ -72,9 +90,30 @@ public class Lobby {
 				player.setX(x);
 				player.setY(y);
 			});
+			break;
+		case "BUILD":
+			// ...
+			var list = primitiveWorldState.get(uuid);
+			if (list == null)
+				list = new ArrayList<>();
+			list.add(new String[] { packet.getAttribute("x"), packet.getAttribute("y") });
+			primitiveWorldState.put(uuid, list);
+			break;
+		case "DISCONNECT":
+			// ...
+			System.out.printf("Player %s disconnected (%d)%n", uuid, primitiveWorldState.size());
+			primitiveWorldState.remove(uuid);
+			System.out.printf("=>> POST (%d)%n", primitiveWorldState.size());
+			break;
 		}
+	}
+
+	public void packetReceived(String uuid, Packet packet) {
+		processPacket(uuid, packet);
+		final Packet relayPacket = PacketFormatter.getRelayPacket(packet, uuid);
+		boolean relayToSelf = Packet.shouldRelayToSelf(packet);
 		players.parallelStream().forEach(player -> {
-			if (!player.getUuid().equals(uuid)) {
+			if (relayToSelf || !player.getUuid().equals(uuid)) {
 				player.sendPacket(relayPacket);
 			}
 		});

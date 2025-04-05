@@ -51,6 +51,16 @@ public final class PacketFormatter {
 		return p;
 	}
 
+	public static Packet buildPacket(String uuid, String material, String x, String y) {
+		Packet p = new Packet();
+		p.addAttribute("type", "BUILD");
+		p.addAttribute("uuid", uuid);
+		p.addAttribute("material", material);
+		p.addAttribute("x", x);
+		p.addAttribute("y", y);
+		return p;
+	}
+
 	public static Packet getRelayPacket(Packet receivedPacket, String senderUUID) {
 		Packet packet = new Packet(receivedPacket);
 		if (packet.getAttribute("uuid").isEmpty()) {

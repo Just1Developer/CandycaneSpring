@@ -54,4 +54,11 @@ public class Packet {
 			throw new PacketParseException();
 		}
 	}
+
+	public static boolean shouldRelayToSelf(Packet packet) {
+		return switch (packet.getAttribute("type")) {
+		case "POSITION", "PLAYER", "DISCONNECT" -> false;
+		default -> true;
+		};
+	}
 }
