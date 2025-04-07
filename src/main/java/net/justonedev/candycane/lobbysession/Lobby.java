@@ -101,9 +101,7 @@ public class Lobby {
 			break;
 		case "DISCONNECT":
 			// ...
-			System.out.printf("Player %s disconnected (%d)%n", uuid, primitiveWorldState.size());
 			primitiveWorldState.remove(uuid);
-			System.out.printf("=>> POST (%d)%n", primitiveWorldState.size());
 			break;
 		}
 	}
