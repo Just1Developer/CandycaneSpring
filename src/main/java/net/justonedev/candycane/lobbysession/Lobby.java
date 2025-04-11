@@ -39,10 +39,7 @@ public class Lobby {
 
 		// todo properly
 		primitiveWorldState.forEach((key, value) -> {
-			value.forEach(val -> {
-				Packet packet = PacketFormatter.buildPacket(key, "BLOCK", val[0], val[1]);
-				player.sendPacket(packet);
-			});
+			value.forEach(player::sendPacket);
 		});
 
 		players.add(player);
@@ -75,7 +72,7 @@ public class Lobby {
 		players.parallelStream().forEach(player -> player.sendPacket(PacketFormatter.PACKET_KEEP_ALIVE));
 	}
 
-	private final ConcurrentHashMap<String, List<String[]>> primitiveWorldState = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<String, List<Packet>> primitiveWorldState = new ConcurrentHashMap<>();
 
 	private void processPacket(String uuid, Packet packet) {
 		switch (packet.getAttribute("type")) {
@@ -96,7 +93,7 @@ public class Lobby {
 			var list = primitiveWorldState.get(uuid);
 			if (list == null)
 				list = new ArrayList<>();
-			list.add(new String[] { packet.getAttribute("x"), packet.getAttribute("y") });
+			list.add(PacketFormatter.getRelayPacket(packet, uuid));
 			primitiveWorldState.put(uuid, list);
 			break;
 		case "DISCONNECT":
