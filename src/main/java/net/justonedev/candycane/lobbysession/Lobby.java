@@ -3,13 +3,14 @@ package net.justonedev.candycane.lobbysession;
 
 import net.justonedev.candycane.lobbysession.packet.Packet;
 import net.justonedev.candycane.lobbysession.packet.PacketFormatter;
+import net.justonedev.candycane.lobbysession.packet.PacketProcessResult;
+import net.justonedev.candycane.lobbysession.packet.PacketProcessResultFlag;
+import net.justonedev.candycane.lobbysession.packet.PacketProcessResultType;
 import net.justonedev.candycane.lobbysession.world.PersistentWorldState;
 import net.justonedev.candycane.lobbysession.world.element.ComponentFactory;
-import org.springframework.cglib.core.Block;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -86,7 +87,7 @@ public class Lobby {
 		}
 	}
 
-	private boolean processPacket(String uuid, Packet packet) {
+	private PacketProcessResult processPacket(String uuid, Packet packet) {
 		switch (packet.getAttribute("type")) {
 		case "POSITION":
 			getPlayer(uuid).ifPresent(player -> {
@@ -102,6 +103,7 @@ public class Lobby {
 			break;
 		case "BUILD":
 			boolean result = world.addWorldObject(ComponentFactory.createWorldObject(packet, world));
+			if (!result) return PacketProcessResult.swallow();
 			// ...
 			var list = primitiveWorldState.get(uuid);
 			if (list == null)
@@ -109,24 +111,34 @@ public class Lobby {
 			list.add(PacketFormatter.getRelayPacket(packet, uuid));
 			primitiveWorldState.put(uuid, list);
 			// end stuff
-			return result;
+			return PacketProcessResult.relay(PacketProcessResultFlag.SEND_POWER_UPDATE);
 		case "DISCONNECT":
 			// ...
 			primitiveWorldState.remove(uuid);
 			break;
 		}
-		return true;
+		return PacketProcessResult.relay();
 	}
 
 	public void packetReceived(String uuid, Packet packet) {
-		boolean relay = processPacket(uuid, packet);
-		if (!relay) return;
+		PacketProcessResult result = processPacket(uuid, packet);
+		if (result.type() == PacketProcessResultType.SWALLOW) return;
+
 		final Packet relayPacket = PacketFormatter.getRelayPacket(packet, uuid);
 		boolean relayToSelf = Packet.shouldRelayToSelf(packet);
+
+		List<Packet> otherPackets = new ArrayList<>();
+		// This triggers a re-building of the power state, for proper packet-sending,
+		// this must be created exactly once, hence why it's generated here.
+		if (result.isFlagSet(PacketProcessResultFlag.SEND_POWER_UPDATE)) {
+			otherPackets.add(world.getCurrentPowerStatePacket());
+		}
+
 		players.parallelStream().forEach(player -> {
 			if (relayToSelf || !player.getUuid().equals(uuid)) {
 				player.sendPacket(relayPacket);
 			}
+			otherPackets.forEach(player::sendPacket);
 		});
 	}
 }

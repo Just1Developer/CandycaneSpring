@@ -20,11 +20,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PersistentWorldState {
     private final ConcurrentHashMap<Position, WorldObject> worldObjects;
-    private final ConcurrentHashMap<Position, Resultable> inputPositionRefs;
     // Separated because one is used in an algorithm, the other isn't
     private final ConcurrentHashMap<Position, List<Wire<?>>> connectionPoints;
     private final ConcurrentHashMap<Position, List<Wire<?>>> wireIntermediates;
-    private final ConcurrentHashMap<Position, Powerstate<?>> powerState;
 
     private final Lobby lobby;
     private WorldPowerState currentPowerState = new WorldPowerState();
@@ -32,10 +30,8 @@ public class PersistentWorldState {
     public PersistentWorldState(Lobby lobby) {
         this.lobby = lobby;
         worldObjects = new ConcurrentHashMap<>();
-        inputPositionRefs = new ConcurrentHashMap<>();
         connectionPoints = new ConcurrentHashMap<>();
         wireIntermediates = new ConcurrentHashMap<>();
-        powerState = new ConcurrentHashMap<>();
     }
 
     public synchronized boolean addWorldObject(WorldObject worldObject) {
@@ -62,11 +58,13 @@ public class PersistentWorldState {
                 wireList.add(wire);
                 wireIntermediates.put(position, wireList);
             });
+
+            // Todo: wire splitting + Packet
+
         } else {
             worldObject.getPositions().forEach(pos -> worldObjects.put(pos, worldObject));
             if (worldObject instanceof Resultable resultable) {
                 worldObject.getPositions().forEach(pos -> worldObjects.put(pos, worldObject));
-                resultable.getInputPositions().forEach(pos -> inputPositionRefs.put(pos, resultable));
                 resultable.updatePowerstate();
             }
         }
@@ -287,6 +285,9 @@ public class PersistentWorldState {
     }
 
     public Powerstate<?> getPowerState(Position position) {
-        return powerState.getOrDefault(position, Powerstate.OFF);
+        var wires = connectionPoints.get(position);
+        if (wires == null || wires.isEmpty()) return Powerstate.OFF;
+        // all should be equals
+        return wires.getFirst().getPower();
     }
 }
