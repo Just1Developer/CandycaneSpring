@@ -3,6 +3,7 @@ package net.justonedev.candycane.lobbysession.world.element;
 import lombok.Getter;
 import lombok.Setter;
 import net.justonedev.candycane.lobbysession.world.Position;
+import net.justonedev.candycane.lobbysession.world.Size;
 import net.justonedev.candycane.lobbysession.world.state.Powerstate;
 import net.justonedev.candycane.lobbysession.world.state.PowerstateType;
 
@@ -10,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Wire<T> implements WorldObject {
+    private static final Size SIZE = new Size(1, 1);
+
     private final String uuid;
     private final String material;
     @Getter
@@ -74,5 +77,10 @@ public class Wire<T> implements WorldObject {
 
     public PowerstateType getType() {
         return power.getType();
+    }
+
+    @Override
+    public Size getSize() {
+        return SIZE;
     }
 }
