@@ -5,14 +5,14 @@ import net.justonedev.candycane.lobbysession.world.PersistentWorldState;
 import net.justonedev.candycane.lobbysession.world.Position;
 import net.justonedev.candycane.lobbysession.world.Size;
 import net.justonedev.candycane.lobbysession.world.element.ComponentFactory;
-import net.justonedev.candycane.lobbysession.world.element.ResultableObject;
+import net.justonedev.candycane.lobbysession.world.element.Resultable;
 import net.justonedev.candycane.lobbysession.world.state.Powerstate;
 import net.justonedev.candycane.lobbysession.world.state.PowerstateType;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class NandGate implements ResultableObject {
+public class NandGate implements Resultable {
     private final PersistentWorldState world;
     private final Position position;
     private final String objectUUID;

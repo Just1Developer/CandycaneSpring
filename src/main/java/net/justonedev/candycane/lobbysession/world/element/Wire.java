@@ -9,6 +9,7 @@ import net.justonedev.candycane.lobbysession.world.state.PowerstateType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Wire<T> implements WorldObject {
     private static final Size SIZE = new Size(1, 1);
@@ -18,18 +19,25 @@ public class Wire<T> implements WorldObject {
     @Getter
     private final Position origin;
     @Getter
-    @Setter
     private Position target;
     private final List<Position> positions;
 
     @Getter
     @Setter
-    private Powerstate<T> power;
+    private Powerstate<?> power;
     @Getter
     private boolean isTransmitting;
     @Getter
     @Setter
     private boolean isBroken;
+    @Getter
+    @Setter
+    private boolean isConnectedToOutput;
+    @Getter
+    @Setter
+    private boolean isEvaluated;
+    @Getter
+    private boolean isSingleWire;
 
     public Wire(String uuid, String material, Position origin, Position target) {
         this.uuid = uuid;
@@ -60,6 +68,11 @@ public class Wire<T> implements WorldObject {
         }
     }
 
+    public void setTarget(Position target) {
+        this.target = target;
+        isSingleWire = target.equals(this.origin);
+    }
+
     @Override
     public String getUuid() {
         return uuid;
@@ -82,5 +95,35 @@ public class Wire<T> implements WorldObject {
     @Override
     public Size getSize() {
         return SIZE;
+    }
+
+    public void resetEvaluation() {
+        isConnectedToOutput = false;
+        isEvaluated = false;
+    }
+
+    public void resetBrokennessState() {
+        isBroken = false;
+    }
+
+    public boolean evalNeedsAwaiting() {
+        return isConnectedToOutput && !isEvaluated;
+    }
+
+    public Position getOpposite(Position position) {
+        if (position.equals(target)) return origin;
+        return target;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Wire<?> wire = (Wire<?>) o;
+        return Objects.equals(uuid, wire.uuid) && Objects.equals(origin, wire.origin) && Objects.equals(target, wire.target);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(uuid, origin, target);
     }
 }

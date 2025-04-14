@@ -6,7 +6,7 @@ import net.justonedev.candycane.lobbysession.world.state.Powerstate;
 
 import java.util.List;
 
-public interface ResultableObject extends WorldObject {
+public interface Resultable extends WorldObject {
     List<? extends Powerstate<?>> getInputs();
     List<? extends Powerstate<?>> getOutputs();
     List<Position> getInputPositions();
