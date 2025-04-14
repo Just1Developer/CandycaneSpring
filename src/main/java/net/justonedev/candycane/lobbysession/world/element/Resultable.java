@@ -11,5 +11,5 @@ public interface Resultable extends WorldObject {
     List<? extends Powerstate<?>> getOutputs();
     List<Position> getInputPositions();
     List<Position> getOutputPositions();
-    Packet updatePowerstate();
+    void updatePowerstate();
 }

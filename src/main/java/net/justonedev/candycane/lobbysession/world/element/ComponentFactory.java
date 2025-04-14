@@ -1,5 +1,6 @@
 package net.justonedev.candycane.lobbysession.world.element;
 
+import net.justonedev.candycane.lobbysession.packet.Packet;
 import net.justonedev.candycane.lobbysession.world.PersistentWorldState;
 import net.justonedev.candycane.lobbysession.world.Position;
 import net.justonedev.candycane.lobbysession.world.element.gate.NandGate;
@@ -14,10 +15,23 @@ public enum ComponentFactory {
                 RANDOM.nextLong() & 0xFFFFFFFFFFFFL);
     }
 
+    public static WorldObject createWorldObject(Packet buildPacket, PersistentWorldState world) {
+        String type = buildPacket.getAttribute("material");
+        Position positionFrom = new Position(Integer.parseInt(buildPacket.getAttribute("fromX")), Integer.parseInt(buildPacket.getAttribute("fromY")));
+        Position positionTo = new Position(Integer.parseInt(buildPacket.getAttribute("toX")), Integer.parseInt(buildPacket.getAttribute("toY")));
+        return createWorldObject(type, world, positionFrom, positionTo);
+    }
+
     public static WorldObject createWorldObject(String type, PersistentWorldState world, Position position) {
+        return createWorldObject(type, world, position, position);
+    }
+
+    public static WorldObject createWorldObject(String type, PersistentWorldState world, Position positionFrom, Position positionTo) {
         if (type.startsWith("NAND")) {
             int inputs = type.length() > 4 ? type.charAt(4) - '0' : 2;
-            return new NandGate(world, position, inputs);
+            return new NandGate(world, positionFrom, inputs);
+        } else if (type.equals("WIRE")) {
+            return new Wire<Boolean>(positionFrom, positionTo);
         }
         return null;
     }

@@ -1,6 +1,8 @@
 package net.justonedev.candycane.lobbysession.world;
 
+import net.justonedev.candycane.lobbysession.Lobby;
 import net.justonedev.candycane.lobbysession.packet.Packet;
+import net.justonedev.candycane.lobbysession.world.element.PowerStateable;
 import net.justonedev.candycane.lobbysession.world.element.Resultable;
 import net.justonedev.candycane.lobbysession.world.element.Wire;
 import net.justonedev.candycane.lobbysession.world.element.WorldObject;
@@ -24,7 +26,11 @@ public class PersistentWorldState {
     private final ConcurrentHashMap<Position, List<Wire<?>>> wireIntermediates;
     private final ConcurrentHashMap<Position, Powerstate<?>> powerState;
 
-    public PersistentWorldState() {
+    private final Lobby lobby;
+    private WorldPowerState currentPowerState = new WorldPowerState();
+
+    public PersistentWorldState(Lobby lobby) {
+        this.lobby = lobby;
         worldObjects = new ConcurrentHashMap<>();
         inputPositionRefs = new ConcurrentHashMap<>();
         connectionPoints = new ConcurrentHashMap<>();
@@ -65,8 +71,23 @@ public class PersistentWorldState {
             }
         }
         reevaluateWireBrokenness();
-        // todo send packet of world state changes
         return true;
+    }
+
+    public synchronized void sendNewPowerState() {
+        var newPowerState = generatePowerState();
+        var difference = WorldPowerState.difference(currentPowerState, newPowerState);
+        currentPowerState = newPowerState;
+        lobby.sendOutPacket(difference.toPacket());
+    }
+
+    public Packet getCurrentPowerStatePacket() {
+        return WorldPowerState.difference(null, currentPowerState).toPacket();
+    }
+
+    public Packet getCurrentWorldStatePacket() {
+        // todo
+        return new Packet("type", "NONE");
     }
 
     private synchronized void reevaluateWireBrokenness() {
@@ -250,32 +271,19 @@ public class PersistentWorldState {
         }
     }
 
-    public <T> Packet invokePowerUpdate(Position position, Powerstate<T> newPowerstate) {
-        Packet packet = new Packet();
-        packet.addAttribute("data", updatePowerRecursively(position, newPowerstate));   // todo
-        return packet;  // todo
-    }
-
-    public <T> String updatePowerRecursively(Position position, Powerstate<T> newPowerstate) {
-        List<Wire<?>> wires = connectionPoints.get(position);
-        if (wires == null) return "";
-        // todo
-        wires.forEach(wire -> {
-            if (wire.getType() != newPowerstate.getType()) {
-                wire.setBroken(true);
-                return;   // todo
+    private WorldPowerState generatePowerState() {
+        WorldPowerState powerState = new WorldPowerState();
+        for (var wires : connectionPoints.values()) {
+            for (var wire : wires) {
+                powerState.addEntry(new WorldPowerStateEntry(wire.getUuid(), wire.getType(), wire.getPower().getValue().toString()));
             }
-            if (wire.getPower().getValue().equals(newPowerstate.getValue())) {
-                return;
+        }
+        for (var obj : worldObjects.values()) {
+            if (obj instanceof PowerStateable state) {
+                powerState.addEntry(new WorldPowerStateEntry(state.getUuid(), state.getPowerState().getType(), state.getPowerState().getValue().toString()));
             }
-            //wire.setPower(newPowerstate); // todo
-            if (!wire.getOrigin().equals(position)) {
-                updatePowerRecursively(wire.getOrigin(), newPowerstate);
-            } else if (!wire.getTarget().equals(position)) {
-                updatePowerRecursively(wire.getTarget(), newPowerstate);
-            }
-        });
-        return "";  // todo
+        }
+        return powerState;
     }
 
     public Powerstate<?> getPowerState(Position position) {

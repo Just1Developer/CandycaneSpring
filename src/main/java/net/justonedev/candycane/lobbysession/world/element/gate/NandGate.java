@@ -19,6 +19,8 @@ public class NandGate implements Resultable {
     private final int inputs;
     private final Size size;
 
+    private List<Powerstate<?>> outputs;
+
     public NandGate(PersistentWorldState world, Position position) {
         this(world, position, 2);
     }
@@ -29,6 +31,7 @@ public class NandGate implements Resultable {
         this.objectUUID = ComponentFactory.generateComponentUUID();
         this.inputs = inputs;
         size = new Size(4, 2 * inputs - 1);
+        updatePowerstate();
     }
 
     @Override
@@ -38,12 +41,7 @@ public class NandGate implements Resultable {
 
     @Override
     public List<Powerstate<?>> getOutputs() {
-        var inputs = getInputs();
-        // If not all inputs are boolean, return none (invalid)
-        if (inputs.stream().anyMatch(state -> state.getType() != PowerstateType.POWER)) return List.of(Powerstate.ILLEGAL);
-        // If all inputs are boolean and false
-        if (inputs.stream().noneMatch(Powerstate::getBooleanValue)) return List.of(Powerstate.ON);
-        return List.of(Powerstate.OFF);
+        return new ArrayList<>(outputs);
     }
 
     @Override
@@ -76,14 +74,17 @@ public class NandGate implements Resultable {
     }
 
     @Override
-    public Packet updatePowerstate() {
-        var outputs = getOutputs();
-        var outputPositions = getOutputPositions();
-        Packet packet = new Packet();   // todo
-        for (int i = 0; i < Math.min(outputs.size(), outputPositions.size()); i++) {
-            packet = world.invokePowerUpdate(outputPositions.get(i), outputs.get(i));
-        }
-        return packet;
+    public void updatePowerstate() {
+        this.outputs = getCurrentOutputs();
+    }
+
+    private List<Powerstate<?>> getCurrentOutputs() {
+        var inputs = getInputs();
+        // If not all inputs are boolean, return none (invalid)
+        if (inputs.stream().anyMatch(state -> state.getType() != PowerstateType.POWER)) return List.of(Powerstate.ILLEGAL);
+        // If all inputs are boolean and false
+        if (inputs.stream().noneMatch(Powerstate::getBooleanValue)) return List.of(Powerstate.ON);
+        return List.of(Powerstate.OFF);
     }
 
     @Override

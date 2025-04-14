@@ -4,6 +4,7 @@ package net.justonedev.candycane.lobbysession;
 import net.justonedev.candycane.lobbysession.packet.Packet;
 import net.justonedev.candycane.lobbysession.packet.PacketFormatter;
 import net.justonedev.candycane.lobbysession.world.PersistentWorldState;
+import net.justonedev.candycane.lobbysession.world.element.ComponentFactory;
 import org.springframework.cglib.core.Block;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -20,7 +21,7 @@ public class Lobby {
 
 	public Lobby() {
 		this.players = new ConcurrentLinkedQueue<>();
-		this.world = new PersistentWorldState();
+		this.world = new PersistentWorldState(this);
 	}
 
 	public void addPlayer(Player player) {
@@ -36,6 +37,11 @@ public class Lobby {
 			player.sendPacket(PacketFormatter.updatePlayerPacket(p));
 			p.sendPacket(playerPacket);
 		});
+
+		// Update World
+		player.sendPacket(world.getCurrentWorldStatePacket());
+		// Update Power
+		player.sendPacket(world.getCurrentPowerStatePacket());
 
 		// todo properly
 		primitiveWorldState.forEach((key, value) -> {
@@ -74,7 +80,13 @@ public class Lobby {
 
 	private final ConcurrentHashMap<String, List<Packet>> primitiveWorldState = new ConcurrentHashMap<>();
 
-	private void processPacket(String uuid, Packet packet) {
+	public void sendOutPacket(Packet packet) {
+		for (Player player : players) {
+			player.sendPacket(packet);
+		}
+	}
+
+	private boolean processPacket(String uuid, Packet packet) {
 		switch (packet.getAttribute("type")) {
 		case "POSITION":
 			getPlayer(uuid).ifPresent(player -> {
@@ -89,22 +101,26 @@ public class Lobby {
 			});
 			break;
 		case "BUILD":
+			boolean result = world.addWorldObject(ComponentFactory.createWorldObject(packet, world));
 			// ...
 			var list = primitiveWorldState.get(uuid);
 			if (list == null)
 				list = new ArrayList<>();
 			list.add(PacketFormatter.getRelayPacket(packet, uuid));
 			primitiveWorldState.put(uuid, list);
-			break;
+			// end stuff
+			return result;
 		case "DISCONNECT":
 			// ...
 			primitiveWorldState.remove(uuid);
 			break;
 		}
+		return true;
 	}
 
 	public void packetReceived(String uuid, Packet packet) {
-		processPacket(uuid, packet);
+		boolean relay = processPacket(uuid, packet);
+		if (!relay) return;
 		final Packet relayPacket = PacketFormatter.getRelayPacket(packet, uuid);
 		boolean relayToSelf = Packet.shouldRelayToSelf(packet);
 		players.parallelStream().forEach(player -> {

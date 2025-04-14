@@ -39,9 +39,12 @@ public class Wire<T> implements WorldObject {
     @Getter
     private boolean isSingleWire;
 
-    public Wire(String uuid, String material, Position origin, Position target) {
+    public Wire(Position origin, Position target) {
+        this(ComponentFactory.generateComponentUUID(), origin, target);
+    }
+    public Wire(String uuid, Position origin, Position target) {
         this.uuid = uuid;
-        this.material = material;
+        this.material = "WIRE";
         this.origin = origin;
         this.target = target;
 
