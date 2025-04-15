@@ -2,12 +2,14 @@ package net.justonedev.candycane.lobbysession.world;
 
 import net.justonedev.candycane.lobbysession.Lobby;
 import net.justonedev.candycane.lobbysession.packet.Packet;
-import net.justonedev.candycane.lobbysession.packet.PacketFormatter;
 import net.justonedev.candycane.lobbysession.world.element.ComponentFactory;
 import net.justonedev.candycane.lobbysession.world.element.PowerStateable;
 import net.justonedev.candycane.lobbysession.world.element.Resultable;
-import net.justonedev.candycane.lobbysession.world.element.Wire;
+import net.justonedev.candycane.lobbysession.world.element.wire.Wire;
 import net.justonedev.candycane.lobbysession.world.element.WorldObject;
+import net.justonedev.candycane.lobbysession.world.element.wire.WireBrokennessState;
+import net.justonedev.candycane.lobbysession.world.element.wire.WireBrokennessStateEntry;
+import net.justonedev.candycane.lobbysession.world.element.wire.WireSplit;
 import net.justonedev.candycane.lobbysession.world.state.Powerstate;
 
 import java.util.ArrayList;
@@ -28,6 +30,7 @@ public class PersistentWorldState {
 
     private final Lobby lobby;
     private WorldPowerState currentPowerState = new WorldPowerState();
+    private WireBrokennessState currentBrokennessState = new WireBrokennessState();
 
     public PersistentWorldState(Lobby lobby) {
         this.lobby = lobby;
@@ -41,7 +44,7 @@ public class PersistentWorldState {
             return WorldBuildingResponse.dont();
         }
 
-        WorldBuildingResponse response = null;
+        WorldBuildingResponse response = WorldBuildingResponse.sendOriginal();
 
         if (worldObject instanceof Wire<?> wire) {
             var origin = wire.getOrigin();
@@ -99,7 +102,10 @@ public class PersistentWorldState {
         }
         reevaluateWireBrokenness();
         updatePowerstate();
-        if (response == null) return WorldBuildingResponse.sendOriginal();
+
+        var difference = updateBrokennessState();
+        if (!difference.isEmpty()) response.addPacket(difference.toPacket());
+
         return response;
     }
 
@@ -142,12 +148,16 @@ public class PersistentWorldState {
 
     public synchronized void sendNewPowerState() {
         var newPowerState = generatePowerState();
-        System.out.println("Current Calculated Power State: " + currentPowerState.toPacket().toString());
-        System.out.println("New Calculated Power State: " + newPowerState.toPacket().toString());
         var difference = WorldPowerState.difference(currentPowerState, newPowerState);
-        System.out.println("Calculated Difference Power State: " + difference.toPacket().toString());
         currentPowerState = newPowerState;
-        lobby.sendOutPacket(difference.toPacket());
+        if (!difference.isEmpty()) lobby.sendOutPacket(difference.toPacket());
+    }
+
+    private synchronized WireBrokennessState updateBrokennessState() {
+        var newBrokennessState = generateBrokennessState();
+        var difference = WireBrokennessState.difference(currentBrokennessState, newBrokennessState);
+        currentBrokennessState = newBrokennessState;
+        return difference;
     }
 
     public Packet getCurrentPowerStatePacket() {
@@ -189,7 +199,6 @@ public class PersistentWorldState {
         }
 
         brokenOutputs.forEach(position -> outputMaps.get(position).forEach(wire -> wire.setBroken(true)));
-        System.out.println("Broken outputs: " + brokenOutputs.size());
     }
 
     private synchronized Map<Position, List<Position>> getPositionListMap() {
@@ -363,6 +372,16 @@ public class PersistentWorldState {
             }
         }
         return powerState;
+    }
+
+    private WireBrokennessState generateBrokennessState() {
+        WireBrokennessState brokennessState = new WireBrokennessState();
+        for (var wires : connectionPoints.values()) {
+            for (var wire : wires) {
+                brokennessState.addEntry(new WireBrokennessStateEntry(wire.getUuid(), wire.isBroken()));
+            }
+        }
+        return brokennessState;
     }
 
     public Powerstate<?> getPowerState(Position position) {

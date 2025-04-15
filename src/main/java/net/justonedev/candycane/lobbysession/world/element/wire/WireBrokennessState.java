@@ -1,25 +1,25 @@
-package net.justonedev.candycane.lobbysession.world;
+package net.justonedev.candycane.lobbysession.world.element.wire;
 
 import net.justonedev.candycane.lobbysession.packet.Packet;
 
 import java.util.HashSet;
 import java.util.Set;
 
-public class WorldPowerState {
-    private final Set<WorldPowerStateEntry> entries;
-    public WorldPowerState() {
+public class WireBrokennessState {
+    private final Set<WireBrokennessStateEntry> entries;
+    public WireBrokennessState() {
         entries = new HashSet<>();
     }
 
-    public void addEntry(WorldPowerStateEntry entry) {
+    public void addEntry(WireBrokennessStateEntry entry) {
         if (entry != null) entries.add(entry);
     }
 
     public Packet toPacket() {
         Packet packet = new Packet();
-        packet.addAttribute("type", "POWERWORLDSTATE");
-        packet.addAttribute("state", "[%s]".formatted(String.join(",", entries.stream().map(entry -> "{\"uuid\":\"%s\",\"powerType\":\"%s\",\"value\":\"%s\",\"updateType\":\"%s\"}".formatted(
-                entry.uuid(), entry.powerstate(), entry.stateValue(), entry.updateType()
+        packet.addAttribute("type", "WIREBROKENSTATE");
+        packet.addAttribute("brokenState", "[%s]".formatted(String.join(",", entries.stream().map(entry -> "{\"uuid\":\"%s\",\"broken\":%b,\"updateType\":%s}".formatted(
+                entry.uuid(), entry.isBroken(), entry.updateType()
         )).toList())));
         return packet;
     }
@@ -28,11 +28,11 @@ public class WorldPowerState {
         return entries.isEmpty();
     }
 
-    public static WorldPowerState difference(WorldPowerState oldState, WorldPowerState newState) {
-        var difference = new WorldPowerState();
+    public static WireBrokennessState difference(WireBrokennessState oldState, WireBrokennessState newState) {
+        var difference = new WireBrokennessState();
         if (oldState == null) {
             newState.entries.forEach(entry -> {
-                difference.addEntry(new WorldPowerStateEntry(entry, UpdateType.ADD));
+                difference.addEntry(new WireBrokennessStateEntry(entry, WireBrokennessState.UpdateType.ADD));
             });
             return difference;
         }
@@ -43,15 +43,15 @@ public class WorldPowerState {
             // If present in both but not equal:
             if (matchingState.isPresent()) {
                 if (!matchingState.get().equals(entry)) {
-                    difference.addEntry(new WorldPowerStateEntry(entry, UpdateType.MOD));
+                    difference.addEntry(new WireBrokennessStateEntry(entry, WireBrokennessState.UpdateType.MOD));
                 }
                 oldStateCopy.remove(matchingState.get());
             } else {
-                difference.addEntry(new WorldPowerStateEntry(entry, UpdateType.ADD));
+                difference.addEntry(new WireBrokennessStateEntry(entry, WireBrokennessState.UpdateType.ADD));
             }
         }
         for (var remaining : oldStateCopy) {
-            difference.addEntry(new WorldPowerStateEntry(remaining, UpdateType.DEL));
+            difference.addEntry(new WireBrokennessStateEntry(remaining, WireBrokennessState.UpdateType.DEL));
         }
         return difference;
     }

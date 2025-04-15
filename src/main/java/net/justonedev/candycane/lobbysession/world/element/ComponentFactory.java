@@ -8,6 +8,7 @@ import net.justonedev.candycane.lobbysession.world.element.gate.NandGate;
 import net.justonedev.candycane.lobbysession.world.element.gate.NorGate;
 import net.justonedev.candycane.lobbysession.world.element.gate.OrGate;
 import net.justonedev.candycane.lobbysession.world.element.gate.XorGate;
+import net.justonedev.candycane.lobbysession.world.element.wire.Wire;
 
 import java.util.Random;
 

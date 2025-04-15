@@ -1,7 +1,6 @@
-package net.justonedev.candycane.lobbysession.world;
+package net.justonedev.candycane.lobbysession.world.element.wire;
 
 import net.justonedev.candycane.lobbysession.packet.Packet;
-import net.justonedev.candycane.lobbysession.world.element.Wire;
 
 import java.util.HashSet;
 import java.util.Set;

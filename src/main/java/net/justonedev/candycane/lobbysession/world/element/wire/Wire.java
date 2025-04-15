@@ -1,9 +1,11 @@
-package net.justonedev.candycane.lobbysession.world.element;
+package net.justonedev.candycane.lobbysession.world.element.wire;
 
 import lombok.Getter;
 import lombok.Setter;
 import net.justonedev.candycane.lobbysession.world.Position;
 import net.justonedev.candycane.lobbysession.world.Size;
+import net.justonedev.candycane.lobbysession.world.element.ComponentFactory;
+import net.justonedev.candycane.lobbysession.world.element.WorldObject;
 import net.justonedev.candycane.lobbysession.world.state.Powerstate;
 import net.justonedev.candycane.lobbysession.world.state.PowerstateType;
 
