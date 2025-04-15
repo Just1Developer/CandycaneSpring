@@ -69,6 +69,9 @@ public class Wire<T> implements WorldObject {
                 }
             }
         }
+
+        // Off by default
+        power = Powerstate.OFF;
     }
 
     public void setTarget(Position target) {

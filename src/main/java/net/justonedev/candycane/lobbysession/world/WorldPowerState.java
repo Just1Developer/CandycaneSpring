@@ -34,19 +34,28 @@ public class WorldPowerState {
         }
 
         var oldStateCopy = new HashSet<>(oldState.entries);
+        System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>BEGIN");
         for (var entry : newState.entries) {
             var matchingState = oldStateCopy.stream().filter(entry1 -> entry1.uuid().equals(entry.uuid())).findFirst();
+            System.out.printf("State of UUID %s (state: %s, value: %s), present: %b%n", entry.uuid(), entry.powerstate(), entry.stateValue(), matchingState.isPresent());
             // If present in both but not equal:
-            if (matchingState.isPresent() && !matchingState.get().equals(entry)) {
-                difference.addEntry(new WorldPowerStateEntry(entry, UpdateType.MOD));
+            if (matchingState.isPresent()) {
+                if (!matchingState.get().equals(entry)) {
+                    System.out.printf("A matching state has been found, but it is different: UUID %s (state: %s, value: %s)%n", matchingState.get().uuid(), matchingState.get().powerstate(), matchingState.get().stateValue());
+                    difference.addEntry(new WorldPowerStateEntry(entry, UpdateType.MOD));
+                } else System.out.println("The two are equal");
                 oldStateCopy.remove(matchingState.get());
-            } else if (matchingState.isEmpty()) {
+            } else {
+                System.out.println("No matching state found for UUID " + entry.uuid());
                 difference.addEntry(new WorldPowerStateEntry(entry, UpdateType.ADD));
             }
         }
+        System.out.println("All that are in the old state but not in the new must be marked as removed:");
         for (var remaining : oldStateCopy) {
+            System.out.printf("Removing state of UUID %s (state: %s, value: %s)%n", remaining.uuid(), remaining.powerstate(), remaining.stateValue());
             difference.addEntry(new WorldPowerStateEntry(remaining, UpdateType.DEL));
         }
+        System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>DONE");
         return difference;
     }
 

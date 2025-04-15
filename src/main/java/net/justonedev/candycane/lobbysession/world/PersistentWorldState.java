@@ -2,6 +2,7 @@ package net.justonedev.candycane.lobbysession.world;
 
 import net.justonedev.candycane.lobbysession.Lobby;
 import net.justonedev.candycane.lobbysession.packet.Packet;
+import net.justonedev.candycane.lobbysession.world.element.ComponentFactory;
 import net.justonedev.candycane.lobbysession.world.element.PowerStateable;
 import net.justonedev.candycane.lobbysession.world.element.Resultable;
 import net.justonedev.candycane.lobbysession.world.element.Wire;
@@ -39,7 +40,8 @@ public class PersistentWorldState {
             return false;
         }
         if (objectCollides(worldObject)) {
-            return false;
+            System.out.println("New Object collides.");
+            //return false;
         }
         if (worldObject instanceof Wire<?> wire) {
             var list = connectionPoints.get(wire.getOrigin());
@@ -69,12 +71,16 @@ public class PersistentWorldState {
             }
         }
         reevaluateWireBrokenness();
+        updatePowerstate();
         return true;
     }
 
     public synchronized void sendNewPowerState() {
         var newPowerState = generatePowerState();
+        System.out.println("Current Calculated Power State: " + currentPowerState.toPacket().toString());
+        System.out.println("New Calculated Power State: " + newPowerState.toPacket().toString());
         var difference = WorldPowerState.difference(currentPowerState, newPowerState);
+        System.out.println("Calculated Difference Power State: " + difference.toPacket().toString());
         currentPowerState = newPowerState;
         lobby.sendOutPacket(difference.toPacket());
     }
@@ -118,6 +124,7 @@ public class PersistentWorldState {
         }
 
         brokenOutputs.forEach(position -> outputMaps.get(position).forEach(wire -> wire.setBroken(true)));
+        System.out.println("Broken outputs: " + brokenOutputs.size());
     }
 
     private synchronized Map<Position, List<Position>> getPositionListMap() {
@@ -206,6 +213,8 @@ public class PersistentWorldState {
     }
 
     public synchronized void updatePowerstate() {
+        String uuid = ComponentFactory.generateComponentUUID();
+        System.out.printf("UUID %s, BEGIN UPDATE POWER%n", uuid);
         Queue<Resultable> queue = new LinkedList<>();
         connectionPoints.forEach((_, list) -> list.forEach(Wire::resetEvaluation));
         Map<Position, Set<Wire<?>>> allWiresPerOutput = new HashMap<>();
@@ -256,6 +265,7 @@ public class PersistentWorldState {
                 processObject(resultable, allWiresPerOutput);
             }
         }
+        System.out.printf("UUID %s, DONE UPDATE POWER%n", uuid);
     }
 
     private synchronized void processObject(Resultable resultable, Map<Position, Set<Wire<?>>> allWiresPerOutput) {

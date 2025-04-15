@@ -79,11 +79,20 @@ public class NandGate implements Resultable {
     }
 
     private List<Powerstate<?>> getCurrentOutputs() {
+        System.out.printf(">>> Evaluating Nand Gate @ %s%n", position);
         var inputs = getInputs();
+        System.out.printf(">>> Inputs: %s%n", String.join(", ", inputs.stream().map(input -> "%s => %s".formatted(input.getType(), input.getValue())).toList()));
         // If not all inputs are boolean, return none (invalid)
-        if (inputs.stream().anyMatch(state -> state.getType() != PowerstateType.POWER)) return List.of(Powerstate.ILLEGAL);
+        if (inputs.stream().anyMatch(state -> state.getType() != PowerstateType.POWER)) {
+            System.out.println("An Input has an illegal powerstate (!= POWER)");
+            return List.of(Powerstate.ILLEGAL);
+        }
         // If all inputs are boolean and false
-        if (inputs.stream().noneMatch(Powerstate::getBooleanValue)) return List.of(Powerstate.ON);
+        if (inputs.stream().noneMatch(Powerstate::getBooleanValue)) {
+            System.out.println("All are off. Powerstate of NAND is ON");
+            return List.of(Powerstate.ON);
+        }
+        System.out.println("One or more is on. Powerstate of NAND is OFF");
         return List.of(Powerstate.OFF);
     }
 

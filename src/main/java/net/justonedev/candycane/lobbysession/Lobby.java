@@ -102,7 +102,9 @@ public class Lobby {
 			});
 			break;
 		case "BUILD":
-			boolean result = world.addWorldObject(ComponentFactory.createWorldObject(packet, world));
+			var factoryObject = ComponentFactory.createWorldObject(packet, world);
+			boolean result = world.addWorldObject(factoryObject);
+			System.out.println("Result of addWorldObject: " + result);
 			if (!result) return PacketProcessResult.swallow();
 			// ...
 			var list = primitiveWorldState.get(uuid);
@@ -111,7 +113,8 @@ public class Lobby {
 			list.add(PacketFormatter.getRelayPacket(packet, uuid));
 			primitiveWorldState.put(uuid, list);
 			// end stuff
-			return PacketProcessResult.relay(PacketProcessResultFlag.SEND_POWER_UPDATE);
+			System.out.println("Returning " + PacketProcessResult.relay(PacketProcessResultFlag.SEND_POWER_UPDATE));
+			return PacketProcessResult.relay(PacketProcessResultFlag.SEND_POWER_UPDATE).withAttribute("uuid", factoryObject.getUuid());
 		case "DISCONNECT":
 			// ...
 			primitiveWorldState.remove(uuid);
@@ -122,23 +125,36 @@ public class Lobby {
 
 	public void packetReceived(String uuid, Packet packet) {
 		PacketProcessResult result = processPacket(uuid, packet);
-		if (result.type() == PacketProcessResultType.SWALLOW) return;
+		if (result.getType() == PacketProcessResultType.SWALLOW) return;
 
 		final Packet relayPacket = PacketFormatter.getRelayPacket(packet, uuid);
 		boolean relayToSelf = Packet.shouldRelayToSelf(packet);
 
+		// Special Stuff:
+		var resultUUID = result.getAttribute("uuid");
+		if (packet.getAttribute("type").equals("BUILD")
+			&& !resultUUID.isEmpty()) {
+			// Inject our element uuid
+			relayPacket.addAttribute("elementUUID", resultUUID);
+		}
+
+		/*
 		List<Packet> otherPackets = new ArrayList<>();
 		// This triggers a re-building of the power state, for proper packet-sending,
 		// this must be created exactly once, hence why it's generated here.
 		if (result.isFlagSet(PacketProcessResultFlag.SEND_POWER_UPDATE)) {
 			otherPackets.add(world.getCurrentPowerStatePacket());
-		}
+		}*/
 
 		players.parallelStream().forEach(player -> {
 			if (relayToSelf || !player.getUuid().equals(uuid)) {
 				player.sendPacket(relayPacket);
 			}
-			otherPackets.forEach(player::sendPacket);
+			//otherPackets.forEach(player::sendPacket);
 		});
+
+		if (result.isFlagSet(PacketProcessResultFlag.SEND_POWER_UPDATE)) {
+			world.sendNewPowerState();
+		}
 	}
 }

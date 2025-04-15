@@ -10,6 +10,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 @Getter
 public class Player {
@@ -46,6 +47,7 @@ public class Player {
 
 	public void sendPacket(Packet packet) {
 		try {
+			System.out.println("Sending packet: " + packet);
 			session.sendMessage(new TextMessage(packet.toString()));
 		} catch (IOException | IllegalStateException e) {
 			if (lobbyManager != null && !session.isOpen()) {

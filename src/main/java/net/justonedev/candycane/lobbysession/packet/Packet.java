@@ -35,7 +35,7 @@ public class Packet {
 						String.join(", ",
 								attributes.entrySet().stream()
 										.map(entry -> "\"%s\":%s".formatted(entry.getKey(),
-												entry.getValue().matches("-?\\d+(?:\\.\\d+)?") ? entry.getValue() : "\"%s\"".formatted(entry.getValue())))
+												entry.getValue().matches("(-?\\d+(?:\\.\\d+)?)|(\\[.*])") ? entry.getValue() : "\"%s\"".formatted(entry.getValue())))
 										.toList()));
 	}
 
