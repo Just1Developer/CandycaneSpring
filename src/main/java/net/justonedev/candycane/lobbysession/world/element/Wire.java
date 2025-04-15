@@ -49,7 +49,7 @@ public class Wire<T> implements WorldObject {
         this.target = target;
 
         int diffX = Math.abs(origin.x() - target.x());
-        int diffY = Math.abs(origin.x() - target.y());
+        int diffY = Math.abs(origin.y() - target.y());
         int diagonalLength = Math.min(diffX, diffY);
         int straightLength = Math.max(diffX, diffY) - diagonalLength;
         boolean verticalStraight = diffX < diffY;
@@ -72,6 +72,17 @@ public class Wire<T> implements WorldObject {
 
         // Off by default
         power = Powerstate.OFF;
+    }
+
+    public Wire<T> splitAt(Position splitPoint) {
+        Wire<T> newWire = new Wire<>(splitPoint, this.target);
+        newWire.setPower(new Powerstate<>(this.power));
+        newWire.setBroken(isBroken);
+        newWire.setConnectedToOutput(isConnectedToOutput);
+        newWire.setEvaluated(isEvaluated);
+        // Update own target:
+        setTarget(splitPoint);
+        return newWire;
     }
 
     public void setTarget(Position target) {

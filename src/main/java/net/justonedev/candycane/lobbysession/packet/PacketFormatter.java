@@ -56,8 +56,10 @@ public final class PacketFormatter {
 		p.addAttribute("type", "BUILD");
 		p.addAttribute("uuid", uuid);
 		p.addAttribute("material", material);
-		p.addAttribute("x", x);
-		p.addAttribute("y", y);
+		p.addAttribute("fromX", x);
+		p.addAttribute("fromY", y);
+		p.addAttribute("toX", x);
+		p.addAttribute("toY", y);
 		return p;
 	}
 

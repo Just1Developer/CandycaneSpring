@@ -7,6 +7,7 @@ import net.justonedev.candycane.lobbysession.packet.PacketProcessResult;
 import net.justonedev.candycane.lobbysession.packet.PacketProcessResultFlag;
 import net.justonedev.candycane.lobbysession.packet.PacketProcessResultType;
 import net.justonedev.candycane.lobbysession.world.PersistentWorldState;
+import net.justonedev.candycane.lobbysession.world.WorldBuildingResponse;
 import net.justonedev.candycane.lobbysession.world.element.ComponentFactory;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -103,9 +104,9 @@ public class Lobby {
 			break;
 		case "BUILD":
 			var factoryObject = ComponentFactory.createWorldObject(packet, world);
-			boolean result = world.addWorldObject(factoryObject);
+			WorldBuildingResponse result = world.addWorldObject(factoryObject);
 			System.out.println("Result of addWorldObject: " + result);
-			if (!result) return PacketProcessResult.swallow();
+			if (!result.isSuccess()) return PacketProcessResult.swallow();
 			// ...
 			var list = primitiveWorldState.get(uuid);
 			if (list == null)
@@ -114,7 +115,7 @@ public class Lobby {
 			primitiveWorldState.put(uuid, list);
 			// end stuff
 			System.out.println("Returning " + PacketProcessResult.relay(PacketProcessResultFlag.SEND_POWER_UPDATE));
-			return PacketProcessResult.relay(PacketProcessResultFlag.SEND_POWER_UPDATE).withAttribute("uuid", factoryObject.getUuid());
+			return PacketProcessResult.relay(result, PacketProcessResultFlag.SEND_POWER_UPDATE).withAttribute("uuid", factoryObject.getUuid());
 		case "DISCONNECT":
 			// ...
 			primitiveWorldState.remove(uuid);
@@ -138,21 +139,27 @@ public class Lobby {
 			relayPacket.addAttribute("elementUUID", resultUUID);
 		}
 
-		/*
-		List<Packet> otherPackets = new ArrayList<>();
-		// This triggers a re-building of the power state, for proper packet-sending,
-		// this must be created exactly once, hence why it's generated here.
-		if (result.isFlagSet(PacketProcessResultFlag.SEND_POWER_UPDATE)) {
-			otherPackets.add(world.getCurrentPowerStatePacket());
-		}*/
+		boolean relayOriginal;
 
-		players.parallelStream().forEach(player -> {
-			if (relayToSelf || !player.getUuid().equals(uuid)) {
+		List<Packet> otherPackets = new ArrayList<>();
+		var worldBuildingReponse = result.getWorldBuildingResponse();
+		if (worldBuildingReponse.isPresent()) {
+			var res = worldBuildingReponse.get();
+			relayOriginal = res.isSendOriginalPacket();
+			otherPackets.addAll(res.getSendPackets());
+		} else {
+            relayOriginal = true;
+        }
+
+        players.parallelStream().forEach(player -> {
+			if (relayOriginal && (relayToSelf || !player.getUuid().equals(uuid))) {
 				player.sendPacket(relayPacket);
 			}
-			//otherPackets.forEach(player::sendPacket);
+			otherPackets.forEach(player::sendPacket);
 		});
 
+		// This triggers a re-building of the power state, for proper packet-sending,
+		// this must be created exactly once, hence why it's generated here.
 		if (result.isFlagSet(PacketProcessResultFlag.SEND_POWER_UPDATE)) {
 			world.sendNewPowerState();
 		}

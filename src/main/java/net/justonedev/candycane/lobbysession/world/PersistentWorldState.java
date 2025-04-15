@@ -2,6 +2,7 @@ package net.justonedev.candycane.lobbysession.world;
 
 import net.justonedev.candycane.lobbysession.Lobby;
 import net.justonedev.candycane.lobbysession.packet.Packet;
+import net.justonedev.candycane.lobbysession.packet.PacketFormatter;
 import net.justonedev.candycane.lobbysession.world.element.ComponentFactory;
 import net.justonedev.candycane.lobbysession.world.element.PowerStateable;
 import net.justonedev.candycane.lobbysession.world.element.Resultable;
@@ -35,35 +36,61 @@ public class PersistentWorldState {
         wireIntermediates = new ConcurrentHashMap<>();
     }
 
-    public synchronized boolean addWorldObject(WorldObject worldObject) {
+    public synchronized WorldBuildingResponse addWorldObject(WorldObject worldObject) {
         if (worldObject == null) {
-            return false;
+            return WorldBuildingResponse.dont();
         }
-        if (objectCollides(worldObject)) {
-            System.out.println("New Object collides.");
-            //return false;
-        }
+
+        WorldBuildingResponse response = null;
+
         if (worldObject instanceof Wire<?> wire) {
-            var list = connectionPoints.get(wire.getOrigin());
-            if (list == null) list = new ArrayList<>();
-            list.add(wire);
-            connectionPoints.put(wire.getOrigin(), list);
+            var origin = wire.getOrigin();
+            var originList = connectionPoints.get(origin);
+            boolean hasPreviousOrigin = originList != null && !originList.isEmpty();
+            if (!hasPreviousOrigin) originList = new ArrayList<>();
 
-            list = connectionPoints.get(wire.getTarget());
-            if (list == null) list = new ArrayList<>();
-            list.add(wire);
-            connectionPoints.put(wire.getTarget(), list);
+            var target = wire.getTarget();
+            var targetList = connectionPoints.get(target);
+            boolean hasPreviousTarget = targetList != null && !targetList.isEmpty();
+            if (!hasPreviousTarget) targetList = new ArrayList<>();
 
-            wire.getPositions().forEach(position -> {
-                var wireList = wireIntermediates.get(position);
-                if (wireList == null) wireList = new ArrayList<>();
-                wireList.add(wire);
-                wireIntermediates.put(position, wireList);
-            });
+            // Wire Splitting: If collides: Move target of intercepting wire, create new wire from intercept to every other one
+            // Basically: Remove all previous wires, create new wires with old data
+            var interceptOrigin = wireIntermediates.get(origin);
+            WireSplit wireSplit = new WireSplit();
+            if (!hasPreviousOrigin && interceptOrigin != null && !interceptOrigin.isEmpty()) {
+                // We have a list of all wires that run along this point.
+                // We need to:
+                // - Move wire target to intercept point
+                // - Create new wire from intercept to old target, with wire data (though that will probably be overwritten anyway)
+                // - Send this BUILD Packet with the wire data immediately (as collection of all the new wires, as WIRESPLIT package)
+                splitWires(interceptOrigin, origin, originList, wireSplit);
+            }
 
-            // Todo: wire splitting + Packet
+            var interceptTarget = wireIntermediates.get(target);
+            if (!hasPreviousTarget && interceptTarget != null && !interceptTarget.isEmpty()) {
+                // We have a list of all wires that run along this point.
+                splitWires(interceptTarget, target, targetList, wireSplit);
+            }
 
+            if (!hasPreviousOrigin || !hasPreviousTarget) response = WorldBuildingResponse.sendThisAfter(wireSplit.toPacket());
+
+            // Add the wire (original)
+
+            originList.add(wire);
+            connectionPoints.put(wire.getOrigin(), originList);
+
+            targetList.add(wire);
+            connectionPoints.put(wire.getTarget(), targetList);
+
+            addIntermediates(wire);
         } else {
+            // Collision is (currently) only relevant for non-wires
+            if (objectCollides(worldObject)) {
+                System.out.println("New Object collides.");
+                return WorldBuildingResponse.dont(); // todo
+            }
+
             worldObject.getPositions().forEach(pos -> worldObjects.put(pos, worldObject));
             if (worldObject instanceof Resultable resultable) {
                 worldObject.getPositions().forEach(pos -> worldObjects.put(pos, worldObject));
@@ -72,7 +99,45 @@ public class PersistentWorldState {
         }
         reevaluateWireBrokenness();
         updatePowerstate();
-        return true;
+        if (response == null) return WorldBuildingResponse.sendOriginal();
+        return response;
+    }
+
+    private void addIntermediates(Wire<?> wire) {
+        wire.getPositions().forEach(position -> {
+            var wireList = wireIntermediates.get(position);
+            if (wireList == null) wireList = new ArrayList<>();
+            wireList.add(wire);
+            wireIntermediates.put(position, wireList);
+        });
+    }
+
+    private synchronized void splitWires(List<Wire<?>> wireList, Position splitPoint, List<Wire<?>> wireListAtSplitPoint, WireSplit wireSplit) {
+        for (var otherWire : new ArrayList<>(wireList)) {
+            var oldTarget = otherWire.getTarget();
+            var oldTargetList = connectionPoints.get(oldTarget);
+            oldTargetList.remove(otherWire);
+            Wire<?> newWire = otherWire.splitAt(splitPoint);
+            oldTargetList.add(newWire);
+            // Add both to split point connection
+            wireListAtSplitPoint.add(otherWire);
+            wireListAtSplitPoint.add(newWire);
+
+            // Remove old intermediates and add new ones:
+            newWire.getPositions().forEach(position -> {
+                var interWireList = wireIntermediates.get(position);
+                if (interWireList == null) interWireList = new ArrayList<>();
+                interWireList.add(newWire);
+                if (!position.equals(splitPoint)) interWireList.remove(otherWire);
+                wireIntermediates.put(position, interWireList);
+            });
+
+            connectionPoints.put(oldTarget, oldTargetList);
+
+            // Add old and new wires to wiresplit
+            wireSplit.addMovedOrigin(otherWire);
+            wireSplit.addNewSplitWire(newWire);
+        }
     }
 
     public synchronized void sendNewPowerState() {
@@ -177,11 +242,11 @@ public class PersistentWorldState {
             int yDiff = pos.y() - objPos.y();
             if (
                     // x collides:
-                    (xDiff > 0 && xDiff <= objSize.width()
-                    || xDiff < 0 && -xDiff <= size.width())
+                    (xDiff > 0 && xDiff < objSize.width()
+                    || xDiff < 0 && -xDiff < size.width())
                     &&
-                    (yDiff > 0 && yDiff <= objSize.height()
-                    || yDiff < 0 && -yDiff <= size.height())
+                    (yDiff > 0 && yDiff < objSize.height()
+                    || yDiff < 0 && -yDiff < size.height())
             ) {
                 return true;
             }
