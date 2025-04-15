@@ -47,7 +47,6 @@ public class Player {
 
 	public void sendPacket(Packet packet) {
 		try {
-			System.out.println("Sending packet: " + packet);
 			session.sendMessage(new TextMessage(packet.toString()));
 		} catch (IOException | IllegalStateException e) {
 			if (lobbyManager != null && !session.isOpen()) {

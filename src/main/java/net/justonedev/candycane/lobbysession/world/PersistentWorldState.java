@@ -215,6 +215,9 @@ public class PersistentWorldState {
     public synchronized void updatePowerstate() {
         String uuid = ComponentFactory.generateComponentUUID();
         System.out.printf("UUID %s, BEGIN UPDATE POWER%n", uuid);
+
+        // Todo at some point when a NAND has a wired input, nothing gets done anymore (no termination)
+
         Queue<Resultable> queue = new LinkedList<>();
         connectionPoints.forEach((_, list) -> list.forEach(Wire::resetEvaluation));
         Map<Position, Set<Wire<?>>> allWiresPerOutput = new HashMap<>();
@@ -275,7 +278,10 @@ public class PersistentWorldState {
         for (int i = 0; i < Math.min(outputs.size(), outputPos.size()); i++) {
             var output = outputs.get(i);
             var position = outputPos.get(i);
-            allWiresPerOutput.get(position).forEach(wire -> wire.setPower(output));
+            allWiresPerOutput.get(position).forEach(wire -> {
+                wire.setPower(output);
+                wire.setEvaluated(true);
+            });
         }
     }
 
