@@ -98,9 +98,7 @@ public class Lobby {
 		case "BUILD":
 			var factoryObject = ComponentFactory.createWorldObject(packet, world);
 			WorldBuildingResponse result = world.addWorldObject(factoryObject);
-			System.out.println("Result of addWorldObject: " + result);
 			if (!result.isSuccess()) return PacketProcessResult.swallow();
-			System.out.println("Returning " + PacketProcessResult.relay(PacketProcessResultFlag.SEND_POWER_UPDATE));
 			return PacketProcessResult.relay(result, PacketProcessResultFlag.SEND_POWER_UPDATE).withAttribute("uuid", factoryObject.getUuid());
 		case "DISCONNECT":
 			// ...
