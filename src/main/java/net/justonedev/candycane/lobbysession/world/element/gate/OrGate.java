@@ -1,6 +1,5 @@
 package net.justonedev.candycane.lobbysession.world.element.gate;
 
-import net.justonedev.candycane.lobbysession.packet.Packet;
 import net.justonedev.candycane.lobbysession.world.PersistentWorldState;
 import net.justonedev.candycane.lobbysession.world.Position;
 import net.justonedev.candycane.lobbysession.world.Size;
@@ -12,7 +11,7 @@ import net.justonedev.candycane.lobbysession.world.state.PowerstateType;
 import java.util.ArrayList;
 import java.util.List;
 
-public class NandGate implements Resultable {
+public class OrGate implements Resultable {
     private final PersistentWorldState world;
     private final Position position;
     private final String objectUUID;
@@ -21,11 +20,11 @@ public class NandGate implements Resultable {
 
     private List<Powerstate<?>> outputs;
 
-    public NandGate(PersistentWorldState world, Position position) {
+    public OrGate(PersistentWorldState world, Position position) {
         this(world, position, 2);
     }
 
-    public NandGate(PersistentWorldState world, Position position, int inputs) {
+    public OrGate(PersistentWorldState world, Position position, int inputs) {
         this.world = world;
         this.position = position;
         this.objectUUID = ComponentFactory.generateComponentUUID();
@@ -65,7 +64,7 @@ public class NandGate implements Resultable {
 
     @Override
     public String getMaterial() {
-        return "NAND" + inputs;
+        return "OR" + inputs;
     }
 
     @Override
@@ -85,7 +84,7 @@ public class NandGate implements Resultable {
             return List.of(Powerstate.ILLEGAL);
         }
         // If all inputs are boolean and false
-        if (inputs.stream().noneMatch(Powerstate::getBooleanValue)) {
+        if (inputs.stream().anyMatch(Powerstate::getBooleanValue)) {
             return List.of(Powerstate.ON);
         }
         return List.of(Powerstate.OFF);

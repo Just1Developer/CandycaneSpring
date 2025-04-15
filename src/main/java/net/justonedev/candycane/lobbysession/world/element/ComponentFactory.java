@@ -3,7 +3,11 @@ package net.justonedev.candycane.lobbysession.world.element;
 import net.justonedev.candycane.lobbysession.packet.Packet;
 import net.justonedev.candycane.lobbysession.world.PersistentWorldState;
 import net.justonedev.candycane.lobbysession.world.Position;
+import net.justonedev.candycane.lobbysession.world.element.gate.AndGate;
 import net.justonedev.candycane.lobbysession.world.element.gate.NandGate;
+import net.justonedev.candycane.lobbysession.world.element.gate.NorGate;
+import net.justonedev.candycane.lobbysession.world.element.gate.OrGate;
+import net.justonedev.candycane.lobbysession.world.element.gate.XorGate;
 
 import java.util.Random;
 
@@ -30,6 +34,18 @@ public enum ComponentFactory {
         if (type.startsWith("NAND")) {
             int inputs = type.length() > 4 ? type.charAt(4) - '0' : 2;
             return new NandGate(world, positionFrom, inputs);
+        } else if (type.startsWith("AND")) {
+            int inputs = type.length() > 3 ? type.charAt(3) - '0' : 2;
+            return new AndGate(world, positionFrom, inputs);
+        } else if (type.startsWith("OR")) {
+            int inputs = type.length() > 2 ? type.charAt(2) - '0' : 2;
+            return new OrGate(world, positionFrom, inputs);
+        } else if (type.startsWith("NOR")) {
+            int inputs = type.length() > 3 ? type.charAt(3) - '0' : 2;
+            return new NorGate(world, positionFrom, inputs);
+        } else if (type.startsWith("XOR")) {
+            int inputs = type.length() > 3 ? type.charAt(3) - '0' : 2;
+            return new XorGate(world, positionFrom, inputs);
         } else if (type.equals("WIRE")) {
             return new Wire<Boolean>(positionFrom, positionTo);
         }
