@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class PersistentWorldState {
     private final ConcurrentHashMap<Position, WorldObject> worldObjects;
@@ -122,6 +124,7 @@ public class PersistentWorldState {
         for (var otherWire : new ArrayList<>(wireList)) {
             var oldTarget = otherWire.getTarget();
             var oldTargetList = connectionPoints.get(oldTarget);
+            if (oldTargetList == null) oldTargetList = new ArrayList<>();
             oldTargetList.remove(otherWire);
             Wire<?> newWire = otherWire.splitAt(splitPoint);
             oldTargetList.add(newWire);
@@ -165,8 +168,33 @@ public class PersistentWorldState {
     }
 
     public Packet getCurrentWorldStatePacket() {
-        // todo
-        return new Packet("type", "NONE");
+        Packet packet = new Packet("type", "WORLDSTATE");
+        List<String> objects = new ArrayList<>();
+        final String format = "{\"uuid\":\"%s\",\"material\":\"%s\",\"fromX\":%d,\"fromY\":%d,\"toX\":%d,\"toY\":%d}";
+        worldObjects.values().forEach(o -> {
+            var positions = o.getPositions();
+            var pos = positions.isEmpty() ? new Position(0, 0) : positions.getFirst();  // If there is no position, it won't matter in the frontend
+            objects.add(format.formatted(
+                    o.getUuid(),
+                    o.getMaterial(),
+                    pos.x(),
+                    pos.y(),
+                    pos.x(),
+                    pos.y()
+            ));
+        });
+        connectionPoints.values().stream().mapMulti((BiConsumer<? super List<Wire<?>>, ? super Consumer<Wire<?>>>) Iterable::forEach).forEach(wire -> {
+            objects.add(format.formatted(
+                    wire.getUuid(),
+                    wire.getMaterial(),
+                    wire.getOrigin().x(),
+                    wire.getOrigin().y(),
+                    wire.getTarget().x(),
+                    wire.getTarget().y()
+            ));
+        });
+        packet.addAttribute("worldState", "[%s]".formatted(String.join(",", objects)));
+        return packet;
     }
 
     private synchronized void reevaluateWireBrokenness() {

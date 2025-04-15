@@ -45,11 +45,6 @@ public class Lobby {
 		// Update Power
 		player.sendPacket(world.getCurrentPowerStatePacket());
 
-		// todo properly
-		primitiveWorldState.forEach((key, value) -> {
-			value.forEach(player::sendPacket);
-		});
-
 		players.add(player);
 	}
 
@@ -80,8 +75,6 @@ public class Lobby {
 		players.parallelStream().forEach(player -> player.sendPacket(PacketFormatter.PACKET_KEEP_ALIVE));
 	}
 
-	private final ConcurrentHashMap<String, List<Packet>> primitiveWorldState = new ConcurrentHashMap<>();
-
 	public void sendOutPacket(Packet packet) {
 		for (Player player : players) {
 			player.sendPacket(packet);
@@ -107,18 +100,10 @@ public class Lobby {
 			WorldBuildingResponse result = world.addWorldObject(factoryObject);
 			System.out.println("Result of addWorldObject: " + result);
 			if (!result.isSuccess()) return PacketProcessResult.swallow();
-			// ...
-			var list = primitiveWorldState.get(uuid);
-			if (list == null)
-				list = new ArrayList<>();
-			list.add(PacketFormatter.getRelayPacket(packet, uuid));
-			primitiveWorldState.put(uuid, list);
-			// end stuff
 			System.out.println("Returning " + PacketProcessResult.relay(PacketProcessResultFlag.SEND_POWER_UPDATE));
 			return PacketProcessResult.relay(result, PacketProcessResultFlag.SEND_POWER_UPDATE).withAttribute("uuid", factoryObject.getUuid());
 		case "DISCONNECT":
 			// ...
-			primitiveWorldState.remove(uuid);
 			break;
 		}
 		return PacketProcessResult.relay();
