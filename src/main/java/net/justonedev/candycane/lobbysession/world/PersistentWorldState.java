@@ -2,6 +2,7 @@ package net.justonedev.candycane.lobbysession.world;
 
 import net.justonedev.candycane.lobbysession.Lobby;
 import net.justonedev.candycane.lobbysession.packet.Packet;
+import net.justonedev.candycane.lobbysession.world.algorithm.TarjansSCC;
 import net.justonedev.candycane.lobbysession.world.element.ComponentFactory;
 import net.justonedev.candycane.lobbysession.world.element.PowerStateable;
 import net.justonedev.candycane.lobbysession.world.element.Resultable;
@@ -27,8 +28,8 @@ import java.util.function.Consumer;
 public class PersistentWorldState {
     private final ConcurrentHashMap<Position, WorldObject> worldObjects;
     // Separated because one is used in an algorithm, the other isn't
-    private final ConcurrentHashMap<Position, List<Wire<?>>> connectionPoints;
-    private final ConcurrentHashMap<Position, List<Wire<?>>> wireIntermediates;
+    private final ConcurrentHashMap<Position, Set<Wire<?>>> connectionPoints;
+    private final ConcurrentHashMap<Position, Set<Wire<?>>> wireIntermediates;
 
     private final Lobby lobby;
     private WorldPowerState currentPowerState = new WorldPowerState();
@@ -52,12 +53,12 @@ public class PersistentWorldState {
             var origin = wire.getOrigin();
             var originList = connectionPoints.get(origin);
             boolean hasPreviousOrigin = originList != null && !originList.isEmpty();
-            if (!hasPreviousOrigin) originList = new ArrayList<>();
+            if (!hasPreviousOrigin) originList = new HashSet<>();
 
             var target = wire.getTarget();
             var targetList = connectionPoints.get(target);
             boolean hasPreviousTarget = targetList != null && !targetList.isEmpty();
-            if (!hasPreviousTarget) targetList = new ArrayList<>();
+            if (!hasPreviousTarget) targetList = new HashSet<>();
 
             // Wire Splitting: If collides: Move target of intercepting wire, create new wire from intercept to every other one
             // Basically: Remove all previous wires, create new wires with old data
@@ -92,13 +93,13 @@ public class PersistentWorldState {
         } else {
             // Collision is (currently) only relevant for non-wires
             if (objectCollides(worldObject)) {
-                System.out.println("New Object collides.");
-                return WorldBuildingResponse.dont(); // todo
+                return WorldBuildingResponse.dont();
             }
 
             worldObject.getPositions().forEach(pos -> worldObjects.put(pos, worldObject));
             if (worldObject instanceof Resultable resultable) {
-                worldObject.getPositions().forEach(pos -> worldObjects.put(pos, worldObject));
+                resultable.getInputPositions().forEach(pos -> worldObjects.put(pos, worldObject));
+                resultable.getOutputPositions().forEach(pos -> worldObjects.put(pos, worldObject));
                 resultable.updatePowerstate();
             }
         }
@@ -114,17 +115,17 @@ public class PersistentWorldState {
     private void addIntermediates(Wire<?> wire) {
         wire.getPositions().forEach(position -> {
             var wireList = wireIntermediates.get(position);
-            if (wireList == null) wireList = new ArrayList<>();
+            if (wireList == null) wireList = new HashSet<>();
             wireList.add(wire);
             wireIntermediates.put(position, wireList);
         });
     }
 
-    private synchronized void splitWires(List<Wire<?>> wireList, Position splitPoint, List<Wire<?>> wireListAtSplitPoint, WireSplit wireSplit) {
+    private synchronized void splitWires(Set<Wire<?>> wireList, Position splitPoint, Set<Wire<?>> wireListAtSplitPoint, WireSplit wireSplit) {
         for (var otherWire : new ArrayList<>(wireList)) {
             var oldTarget = otherWire.getTarget();
             var oldTargetList = connectionPoints.get(oldTarget);
-            if (oldTargetList == null) oldTargetList = new ArrayList<>();
+            if (oldTargetList == null) oldTargetList = new HashSet<>();
             oldTargetList.remove(otherWire);
             Wire<?> newWire = otherWire.splitAt(splitPoint);
             oldTargetList.add(newWire);
@@ -135,7 +136,7 @@ public class PersistentWorldState {
             // Remove old intermediates and add new ones:
             newWire.getPositions().forEach(position -> {
                 var interWireList = wireIntermediates.get(position);
-                if (interWireList == null) interWireList = new ArrayList<>();
+                if (interWireList == null) interWireList = new HashSet<>();
                 interWireList.add(newWire);
                 if (!position.equals(splitPoint)) interWireList.remove(otherWire);
                 wireIntermediates.put(position, interWireList);
@@ -183,7 +184,7 @@ public class PersistentWorldState {
                     pos.y()
             ));
         });
-        connectionPoints.values().stream().mapMulti((BiConsumer<? super List<Wire<?>>, ? super Consumer<Wire<?>>>) Iterable::forEach).forEach(wire -> {
+        connectionPoints.values().stream().mapMulti((BiConsumer<? super Set<Wire<?>>, ? super Consumer<Wire<?>>>) Iterable::forEach).forEach(wire -> {
             objects.add(format.formatted(
                     wire.getUuid(),
                     wire.getMaterial(),
@@ -197,6 +198,8 @@ public class PersistentWorldState {
         return packet;
     }
 
+    private record OutputWireFloodfillResult(Set<Wire<?>> allWires, Set<Position> directlyReachableOutputs) { }
+
     private synchronized void reevaluateWireBrokenness() {
         connectionPoints.forEach((_, list) -> list.forEach(Wire::resetBrokennessState));
         Map<Position, List<Position>> inputPositions = getPositionListMap();
@@ -205,13 +208,17 @@ public class PersistentWorldState {
         Set<Wire<?>> current = new HashSet<>();
 
         Map<Position, Set<Wire<?>>> outputMaps = new HashMap<>();
+        Map<Position, Set<Position>> dependencyGraph = new HashMap<>();
         Set<Position> brokenOutputs = new HashSet<>();
 
         for (var entry : inputPositions.entrySet()) {
             var output = entry.getKey();
             var inputs = entry.getValue();
-            var allWires = floodFillWires(output);
+            var allWiresAndOutputs = floodFillWiresAndOutputs(output);
+            var allWires = allWiresAndOutputs.allWires;
             outputMaps.put(output, allWires);
+            dependencyGraph.put(output, allWiresAndOutputs.directlyReachableOutputs);
+            current.clear();
 
             for (var wire : allWires) {
                 if (
@@ -225,6 +232,15 @@ public class PersistentWorldState {
                 }
             }
         }
+
+        // Indirect Circular Dependencies
+        TarjansSCC<Position> graphSCC = new TarjansSCC<>(dependencyGraph);
+        brokenOutputs.addAll(graphSCC.getNodesInCycles());
+        for (var entry : dependencyGraph.entrySet()) {
+            System.out.printf("%s -> %s%n", entry.getKey(), String.join(", ", entry.getValue().stream().map(Position::toString).toList()));
+        }
+        System.out.printf("Broken Outputs Indirectly: %s%n", String.join(", ", graphSCC.getNodesInCycles().stream().map(Position::toString).toList()));
+        System.out.printf("Broken Outputs (all): %s%n", String.join(", ", brokenOutputs.stream().map(Position::toString).toList()));
 
         brokenOutputs.forEach(position -> outputMaps.get(position).forEach(wire -> wire.setBroken(true)));
     }
@@ -256,11 +272,34 @@ public class PersistentWorldState {
     }
 
     private synchronized void floodFillWiresRec(Position startPosition, Set<Wire<?>> currentWires) {
-        List<Wire<?>> wires = connectionPoints.get(startPosition);
+        Set<Wire<?>> wires = connectionPoints.get(startPosition);
         if (wires == null) return;
         for (Wire<?> wire : wires) {
             if (wire.isSingleWire()) continue;
             if (currentWires.add(wire)) floodFillWiresRec(wire.getOpposite(startPosition), currentWires);
+        }
+    }
+
+    private synchronized OutputWireFloodfillResult floodFillWiresAndOutputs(Position startPosition) {
+        HashSet<Wire<?>> wires = new HashSet<>();
+        HashSet<Position> outputs = new HashSet<>();
+        floodFillWiresAndOutputsRec(startPosition, wires, outputs);
+        return new OutputWireFloodfillResult(wires, outputs);
+    }
+
+    private synchronized void floodFillWiresAndOutputsRec(Position startPosition, Set<Wire<?>> currentWires, Set<Position> outputs) {
+        Set<Wire<?>> wires = connectionPoints.get(startPosition);
+        if (wires == null) return;
+        for (Wire<?> wire : wires) {
+            if (wire.isSingleWire()) continue;
+            if (currentWires.add(wire)) {
+                var newPos = wire.getOpposite(startPosition);
+                var object = worldObjects.get(newPos);
+                if (object instanceof Resultable resultable) {
+                    outputs.addAll(resultable.getOutputPositions());
+                }
+                floodFillWiresAndOutputsRec(newPos, currentWires, outputs);
+            }
         }
     }
 
@@ -411,6 +450,6 @@ public class PersistentWorldState {
         var wires = connectionPoints.get(position);
         if (wires == null || wires.isEmpty()) return Powerstate.OFF;
         // all should be equals
-        return wires.getFirst().getPower();
+        return wires.stream().toList().getFirst().getPower();
     }
 }

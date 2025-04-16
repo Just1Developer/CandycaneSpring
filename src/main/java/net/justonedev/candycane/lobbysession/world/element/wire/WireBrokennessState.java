@@ -18,7 +18,7 @@ public class WireBrokennessState {
     public Packet toPacket() {
         Packet packet = new Packet();
         packet.addAttribute("type", "WIREBROKENSTATE");
-        packet.addAttribute("brokenState", "[%s]".formatted(String.join(",", entries.stream().map(entry -> "{\"uuid\":\"%s\",\"broken\":%b,\"updateType\":%s}".formatted(
+        packet.addAttribute("brokenState", "[%s]".formatted(String.join(",", entries.stream().map(entry -> "{\"uuid\":\"%s\",\"broken\":%b,\"updateType\":\"%s\"}".formatted(
                 entry.uuid(), entry.isBroken(), entry.updateType()
         )).toList())));
         return packet;
