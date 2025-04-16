@@ -168,6 +168,10 @@ public class PersistentWorldState {
         return WorldPowerState.difference(null, currentPowerState).toPacket();
     }
 
+    public Packet getCurrentBrokennessStatePacket() {
+        return WireBrokennessState.difference(null, currentBrokennessState).toPacket();
+    }
+
     public Packet getCurrentWorldStatePacket() {
         Packet packet = new Packet("type", "WORLDSTATE");
         List<String> objects = new ArrayList<>();
@@ -236,12 +240,6 @@ public class PersistentWorldState {
         // Indirect Circular Dependencies
         TarjansSCC<Position> graphSCC = new TarjansSCC<>(dependencyGraph);
         brokenOutputs.addAll(graphSCC.getNodesInCycles());
-        for (var entry : dependencyGraph.entrySet()) {
-            System.out.printf("%s -> %s%n", entry.getKey(), String.join(", ", entry.getValue().stream().map(Position::toString).toList()));
-        }
-        System.out.printf("Broken Outputs Indirectly: %s%n", String.join(", ", graphSCC.getNodesInCycles().stream().map(Position::toString).toList()));
-        System.out.printf("Broken Outputs (all): %s%n", String.join(", ", brokenOutputs.stream().map(Position::toString).toList()));
-
         brokenOutputs.forEach(position -> outputMaps.get(position).forEach(wire -> wire.setBroken(true)));
     }
 

@@ -44,6 +44,8 @@ public class Lobby {
 		player.sendPacket(world.getCurrentWorldStatePacket());
 		// Update Power
 		player.sendPacket(world.getCurrentPowerStatePacket());
+		// Update Brokenness
+		player.sendPacket(world.getCurrentBrokennessStatePacket());
 
 		players.add(player);
 	}
