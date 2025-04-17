@@ -112,6 +112,64 @@ public class PersistentWorldState {
         return response;
     }
 
+    public WorldBuildingResponse removeWorldObject(String objectUUID, Position probablePosition) {
+        // Get the world object:
+        var ifObject = worldObjects.get(probablePosition);
+        if (ifObject != null) {
+            if (ifObject.getUuid().equals(objectUUID)) {
+                worldObjects.remove(probablePosition);
+            } else {
+                worldObjects.entrySet()
+                        .stream()
+                        .filter(o -> o.getValue().getUuid().equals(objectUUID))
+                        .findFirst()
+                        .ifPresent(newObject -> worldObjects.remove(newObject.getKey()));
+            }
+        } else {
+            // Probably a wire
+            // todo Cannot invoke "java.util.Set.stream()" because "wireList" is null: removeWorldObject(PersistentWorldState.java:133)
+            var wireList = connectionPoints.get(probablePosition);
+            var wire = wireList
+                    .stream()
+                    .filter(o -> o.getUuid().equals(objectUUID))
+                    .findFirst();
+            if (wire.isPresent()) {
+                removeWire(wire.get());
+            } else {
+                // Wire not found. Search more extensively.
+                connectionPoints.values()
+                        .stream()
+                        .mapMulti((BiConsumer<? super Set<Wire<?>>, ? super Consumer<Wire<?>>>) Iterable::forEach)
+                        .filter(o -> o.getUuid().equals(objectUUID))
+                        .toList()
+                        .forEach(this::removeWire);
+            }
+        }
+
+        WorldBuildingResponse response = WorldBuildingResponse.sendOriginal();
+
+        reevaluateWireBrokenness();
+        updatePowerstate();
+
+        var difference = updateBrokennessState();
+        if (!difference.isEmpty()) response.addPacket(difference.toPacket());
+        return response;
+    }
+
+    private void removeWire(Wire<?> wireToRemove) {
+        var originList = connectionPoints.get(wireToRemove.getOrigin());
+        if (originList != null) {
+            originList.remove(wireToRemove);
+            connectionPoints.put(wireToRemove.getOrigin(), originList);
+        }
+        var targetList = connectionPoints.get(wireToRemove.getTarget());
+        if (targetList != null) {
+            targetList.remove(wireToRemove);
+            connectionPoints.put(wireToRemove.getTarget(), targetList);
+        }
+        wireIntermediates.forEach((position, wires) -> wires.remove(wireToRemove));
+    }
+
     private void addIntermediates(Wire<?> wire) {
         wire.getPositions().forEach(position -> {
             var wireList = wireIntermediates.get(position);

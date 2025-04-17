@@ -7,6 +7,7 @@ import net.justonedev.candycane.lobbysession.packet.PacketProcessResult;
 import net.justonedev.candycane.lobbysession.packet.PacketProcessResultFlag;
 import net.justonedev.candycane.lobbysession.packet.PacketProcessResultType;
 import net.justonedev.candycane.lobbysession.world.PersistentWorldState;
+import net.justonedev.candycane.lobbysession.world.Position;
 import net.justonedev.candycane.lobbysession.world.WorldBuildingResponse;
 import net.justonedev.candycane.lobbysession.world.element.ComponentFactory;
 import org.springframework.web.socket.WebSocketSession;
@@ -84,6 +85,7 @@ public class Lobby {
 	}
 
 	private PacketProcessResult processPacket(String uuid, Packet packet) {
+		WorldBuildingResponse result;
 		switch (packet.getAttribute("type")) {
 		case "POSITION":
 			getPlayer(uuid).ifPresent(player -> {
@@ -99,9 +101,14 @@ public class Lobby {
 			break;
 		case "BUILD":
 			var factoryObject = ComponentFactory.createWorldObject(packet, world);
-			WorldBuildingResponse result = world.addWorldObject(factoryObject);
+			result = world.addWorldObject(factoryObject);
 			if (!result.isSuccess()) return PacketProcessResult.swallow();
 			return PacketProcessResult.relay(result, PacketProcessResultFlag.SEND_POWER_UPDATE).withAttribute("uuid", factoryObject.getUuid());
+		case "DELETE":
+			Position position = new Position(packet);
+			result = world.removeWorldObject(packet.getAttribute("elementUUID"), position);
+			if (!result.isSuccess()) return PacketProcessResult.swallow();
+			return PacketProcessResult.relay(result, PacketProcessResultFlag.SEND_POWER_UPDATE);
 		case "DISCONNECT":
 			// ...
 			break;
