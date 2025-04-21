@@ -112,38 +112,56 @@ public class PersistentWorldState {
         return response;
     }
 
-    public WorldBuildingResponse removeWorldObject(String objectUUID, Position probablePosition) {
-        // Get the world object:
-        var ifObject = worldObjects.get(probablePosition);
-        if (ifObject != null) {
-            if (ifObject.getUuid().equals(objectUUID)) {
-                worldObjects.remove(probablePosition);
-            } else {
-                worldObjects.entrySet()
+    public WorldBuildingResponse removeWorldObject(String objectUUID, String material, Position probablePosition) {
+        final boolean noMaterial = material.isEmpty();
+        final boolean isWire = material.equals("WIRE");
+        boolean success = false;
+        if (noMaterial || isWire) {
+            var wireSet = connectionPoints.get(probablePosition);
+            if (wireSet != null && !wireSet.isEmpty()) {
+                var wire = wireSet
                         .stream()
-                        .filter(o -> o.getValue().getUuid().equals(objectUUID))
-                        .findFirst()
-                        .ifPresent(newObject -> worldObjects.remove(newObject.getKey()));
-            }
-        } else {
-            // Probably a wire
-            // todo Cannot invoke "java.util.Set.stream()" because "wireList" is null: removeWorldObject(PersistentWorldState.java:133)
-            var wireList = connectionPoints.get(probablePosition);
-            var wire = wireList
-                    .stream()
-                    .filter(o -> o.getUuid().equals(objectUUID))
-                    .findFirst();
-            if (wire.isPresent()) {
-                removeWire(wire.get());
-            } else {
-                // Wire not found. Search more extensively.
-                connectionPoints.values()
-                        .stream()
-                        .mapMulti((BiConsumer<? super Set<Wire<?>>, ? super Consumer<Wire<?>>>) Iterable::forEach)
                         .filter(o -> o.getUuid().equals(objectUUID))
-                        .toList()
-                        .forEach(this::removeWire);
+                        .findFirst();
+                if (wire.isPresent()) {
+                    removeWire(wire.get());
+                    success = true;
+                } else {
+                    // Wire not found. Search more extensively.
+                    var list = connectionPoints.values()
+                            .stream()
+                            .mapMulti((BiConsumer<? super Set<Wire<?>>, ? super Consumer<Wire<?>>>) Iterable::forEach)
+                            .filter(o -> o.getUuid().equals(objectUUID))
+                            .toList();
+                    if (!list.isEmpty()) {
+                        list.forEach(this::removeWire);
+                        success = true;
+                    }
+                }
             }
+        }
+        if (noMaterial || !isWire) {
+            // Get the world object:
+            var ifObject = worldObjects.get(probablePosition);
+            if (ifObject != null) {
+                if (ifObject.getUuid().equals(objectUUID)) {
+                    worldObjects.remove(probablePosition);
+                    success = true;
+                } else {
+                    var newObject = worldObjects.entrySet()
+                            .stream()
+                            .filter(o -> o.getValue().getUuid().equals(objectUUID))
+                            .findFirst();
+                    if (newObject.isPresent()) {
+                        worldObjects.remove(newObject.get().getKey());
+                        success = true;
+                    }
+                }
+            }
+        }
+
+        if (!success) {
+            return WorldBuildingResponse.dont();
         }
 
         WorldBuildingResponse response = WorldBuildingResponse.sendOriginal();

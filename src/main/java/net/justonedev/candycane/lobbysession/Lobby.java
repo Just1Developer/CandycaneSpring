@@ -106,7 +106,7 @@ public class Lobby {
 			return PacketProcessResult.relay(result, PacketProcessResultFlag.SEND_POWER_UPDATE).withAttribute("uuid", factoryObject.getUuid());
 		case "DELETE":
 			Position position = new Position(packet);
-			result = world.removeWorldObject(packet.getAttribute("elementUUID"), position);
+			result = world.removeWorldObject(packet.getAttribute("elementUUID"), packet.getAttribute("material"), position);
 			if (!result.isSuccess()) return PacketProcessResult.swallow();
 			return PacketProcessResult.relay(result, PacketProcessResultFlag.SEND_POWER_UPDATE);
 		case "DISCONNECT":
