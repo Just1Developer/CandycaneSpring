@@ -264,7 +264,7 @@ public class PersistentWorldState {
 
     public Packet getCurrentWorldStatePacket() {
         Packet packet = new Packet("type", "WORLDSTATE");
-        List<String> objects = new ArrayList<>();
+        Set<String> objects = new HashSet<>();
         final String format = "{\"uuid\":\"%s\",\"material\":\"%s\",\"fromX\":%d,\"fromY\":%d,\"toX\":%d,\"toY\":%d}";
         worldObjects.values().forEach(o -> {
             var pos = o.getTopLeftCorner();
