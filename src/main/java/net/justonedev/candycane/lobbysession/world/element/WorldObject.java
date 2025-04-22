@@ -8,6 +8,7 @@ import java.util.List;
 public interface WorldObject {
     String getUuid();
     String getMaterial();
+    Position getTopLeftCorner();
     List<Position> getPositions();
     Size getSize();
 }

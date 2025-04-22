@@ -76,6 +76,12 @@ public class Wire<T> implements WorldObject {
         power = Powerstate.OFF;
     }
 
+    @Override
+    public Position getTopLeftCorner() {
+        // Doesn't matter, is not used for wires
+        return origin;
+    }
+
     public Wire<T> splitAt(Position splitPoint) {
         Wire<T> newWire = new Wire<>(splitPoint, this.target);
         newWire.setPower(new Powerstate<>(this.power));

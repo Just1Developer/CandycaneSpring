@@ -12,9 +12,8 @@ import net.justonedev.candycane.lobbysession.world.state.PowerstateType;
 import java.util.ArrayList;
 import java.util.List;
 
-public class NandGate implements Resultable {
+public class NandGate extends Resultable {
     private final PersistentWorldState world;
-    private final Position position;
     private final String objectUUID;
     private final int inputs;
     private final Size size;
@@ -27,7 +26,7 @@ public class NandGate implements Resultable {
 
     public NandGate(PersistentWorldState world, Position position, int inputs) {
         this.world = world;
-        this.position = position;
+        setTopLeftCorner(position);
         this.objectUUID = ComponentFactory.generateComponentUUID();
         this.inputs = inputs;
         size = new Size(4, 2 * inputs - 1);
@@ -48,14 +47,14 @@ public class NandGate implements Resultable {
     public List<Position> getInputPositions() {
         ArrayList<Position> positions = new ArrayList<>();
         for (int i = 0; i < inputs * 2; i += 2) {
-            positions.add(position.derive(0, i));
+            positions.add(getTopLeftCorner().derive(0, i));
         }
         return positions;
     }
 
     @Override
     public List<Position> getOutputPositions() {
-        return List.of(position.derive(3, inputs - 1));
+        return List.of(getTopLeftCorner().derive(3, inputs - 1));
     }
 
     @Override
@@ -66,11 +65,6 @@ public class NandGate implements Resultable {
     @Override
     public String getMaterial() {
         return "NAND" + inputs;
-    }
-
-    @Override
-    public List<Position> getPositions() {
-        return List.of(position);
     }
 
     @Override

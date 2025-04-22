@@ -98,8 +98,6 @@ public class PersistentWorldState {
 
             worldObject.getPositions().forEach(pos -> worldObjects.put(pos, worldObject));
             if (worldObject instanceof Resultable resultable) {
-                resultable.getInputPositions().forEach(pos -> worldObjects.put(pos, worldObject));
-                resultable.getOutputPositions().forEach(pos -> worldObjects.put(pos, worldObject));
                 resultable.updatePowerstate();
             }
         }
@@ -145,7 +143,6 @@ public class PersistentWorldState {
             var ifObject = worldObjects.get(probablePosition);
             if (ifObject != null) {
                 if (ifObject.getUuid().equals(objectUUID)) {
-                    worldObjects.remove(probablePosition);
                     success = true;
                 } else {
                     var newObject = worldObjects.entrySet()
@@ -153,9 +150,18 @@ public class PersistentWorldState {
                             .filter(o -> o.getValue().getUuid().equals(objectUUID))
                             .findFirst();
                     if (newObject.isPresent()) {
+                        ifObject = newObject.get().getValue();
                         worldObjects.remove(newObject.get().getKey());
                         success = true;
                     }
+                }
+                if (success) {
+                    System.out.println("Map Before Deletion:");
+                    printMap();
+                    System.out.println("All positions of object: " + String.join(", ", ifObject.getPositions().stream().map(Position::toString).toList()));
+                    ifObject.getPositions().forEach(worldObjects::remove);
+                    System.out.println("Map After Deletion:");
+                    printMap();
                 }
             }
         }
@@ -172,6 +178,14 @@ public class PersistentWorldState {
         var difference = updateBrokennessState();
         if (!difference.isEmpty()) response.addPacket(difference.toPacket());
         return response;
+    }
+    private void printMap() {
+        System.out.println(
+                String.join(", ", worldObjects.entrySet().stream()
+                        .map((entry) -> {
+                            return "Position %s, Object %s".formatted(entry.getKey(), entry.getValue());
+                        }).toList())
+        );
     }
 
     private void removeWire(Wire<?> wireToRemove) {
@@ -253,8 +267,7 @@ public class PersistentWorldState {
         List<String> objects = new ArrayList<>();
         final String format = "{\"uuid\":\"%s\",\"material\":\"%s\",\"fromX\":%d,\"fromY\":%d,\"toX\":%d,\"toY\":%d}";
         worldObjects.values().forEach(o -> {
-            var positions = o.getPositions();
-            var pos = positions.isEmpty() ? new Position(0, 0) : positions.getFirst();  // If there is no position, it won't matter in the frontend
+            var pos = o.getTopLeftCorner();
             objects.add(format.formatted(
                     o.getUuid(),
                     o.getMaterial(),
@@ -378,9 +391,7 @@ public class PersistentWorldState {
     }
 
     public synchronized boolean objectCollides(WorldObject worldObject) {
-        var positions = worldObject.getPositions();
-        if (positions.isEmpty()) return false;
-        Position pos = positions.getFirst();
+        Position pos = worldObject.getTopLeftCorner();
         Size size = worldObject.getSize();
         for (var entry : worldObjects.entrySet()) {
             var obj = entry.getValue();
