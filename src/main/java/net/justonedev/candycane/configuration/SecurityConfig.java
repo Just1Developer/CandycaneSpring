@@ -20,7 +20,7 @@ public class SecurityConfig {
 	 *
 	 * @param http the {@link HttpSecurity} instance to configure with this methode
 	 * @return the configured {@link SecurityFilterChain}
-	 * @throws Exception if an error occurs during configuration process
+	 * @throws Exception if an error occurs during the configuration process
 	 */
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {

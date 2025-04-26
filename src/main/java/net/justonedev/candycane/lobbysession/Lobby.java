@@ -112,13 +112,32 @@ public class Lobby {
 		case "DISCONNECT":
 			// ...
 			break;
+		case "DEBUG":
+			System.out.printf("Received packet %s%n", packet);
+			String cmd = packet.getAttribute("CMD");
+			if (cmd.equals("RESET")) {
+				world.resetWorldState();
+				return PacketProcessResult.swallow(PacketProcessResultFlag.SEND_WORLD_UPDATE);
+			}
+			break;
 		}
 		return PacketProcessResult.relay();
 	}
 
 	public void packetReceived(String uuid, Packet packet) {
 		PacketProcessResult result = processPacket(uuid, packet);
-		if (result.getType() == PacketProcessResultType.SWALLOW) return;
+		if (result.getType() == PacketProcessResultType.SWALLOW) {
+			if (result.noFlags()) return;
+			List<Packet> otherPackets = new ArrayList<>();
+			if (result.isFlagSet(PacketProcessResultFlag.SEND_WORLD_UPDATE)) otherPackets.add(world.getCurrentWorldStatePacket());
+
+			players.parallelStream().forEach(player -> {
+				otherPackets.forEach(player::sendPacket);
+			});
+
+			if (result.isFlagSet(PacketProcessResultFlag.SEND_POWER_UPDATE)) world.sendNewPowerState();
+			return;
+		}
 
 		final Packet relayPacket = PacketFormatter.getRelayPacket(packet, uuid);
 		boolean relayToSelf = Packet.shouldRelayToSelf(packet);
@@ -142,6 +161,10 @@ public class Lobby {
 		} else {
             relayOriginal = true;
         }
+
+		if (result.isFlagSet(PacketProcessResultFlag.SEND_WORLD_UPDATE)) {
+			otherPackets.add(world.getCurrentWorldStatePacket());
+		}
 
         players.parallelStream().forEach(player -> {
 			if (relayOriginal && (relayToSelf || !player.getUuid().equals(uuid))) {

@@ -188,6 +188,14 @@ public class PersistentWorldState {
         );
     }
 
+    public void resetWorldState() {
+        worldObjects.clear();
+        connectionPoints.clear();
+        wireIntermediates.clear();
+        currentPowerState = new WorldPowerState();
+        currentBrokennessState = new WireBrokennessState();
+    }
+
     private void removeWire(Wire<?> wireToRemove) {
         var originList = connectionPoints.get(wireToRemove.getOrigin());
         if (originList != null) {

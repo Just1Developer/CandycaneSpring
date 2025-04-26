@@ -66,4 +66,8 @@ public class PacketProcessResult extends Packet {
     public Optional<WorldBuildingResponse> getWorldBuildingResponse() {
         return Optional.ofNullable(response);
     }
+
+    public boolean noFlags() {
+        return flagByte == 0;
+    }
 }
