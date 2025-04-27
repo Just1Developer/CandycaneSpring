@@ -1,0 +1,11 @@
+services:
+  candycane-spring:
+    container_name: candycane-spring
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./secret.properties:/app/secret.properties
+    working_dir: /app
+    cap_drop:
+      - ALL
