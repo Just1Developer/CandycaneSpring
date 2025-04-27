@@ -6,6 +6,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./secret.properties:/app/secret.properties
+    restart: unless-stopped
     working_dir: /app
     cap_drop:
       - ALL
