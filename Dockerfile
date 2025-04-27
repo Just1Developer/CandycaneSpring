@@ -14,7 +14,5 @@ WORKDIR /app
 
 COPY --from=builder /app/build/libs/*SNAPSHOT.jar spring.jar
 
-EXPOSE 8080
-
 # Start
 ENTRYPOINT ["java", "-jar", "spring.jar"]
